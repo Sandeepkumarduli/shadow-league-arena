@@ -7,7 +7,8 @@ import {
   User,
   Wallet,
   Coins,
-  ShieldCheck
+  ShieldCheck,
+  Newspaper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
@@ -34,6 +35,11 @@ const menuItems = [
     href: "/my-teams",
   },
   {
+    title: "News",
+    icon: Newspaper,
+    href: "/news",
+  },
+  {
     title: "Profile",
     icon: User,
     href: "/profile",
@@ -52,7 +58,6 @@ const menuItems = [
     title: "Request as Admin",
     icon: ShieldCheck,
     href: "/request-admin",
-    comingSoon: true,
   },
 ];
 
@@ -82,7 +87,7 @@ const Sidebar = ({ className }: SidebarProps) => {
               to={item.href}
               className={({ isActive }) => cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors relative",
-                isActive && !item.comingSoon
+                isActive
                   ? "bg-[#1977d4]/20 text-[#1977d4]"
                   : "text-gray-300 hover:bg-[#1977d4]/10 hover:text-[#1977d4]"
               )}
@@ -90,7 +95,7 @@ const Sidebar = ({ className }: SidebarProps) => {
               <item.icon className="h-5 w-5" />
               <span>{item.title}</span>
               
-              {item.comingSoon && (
+              {item.title === "Request as Admin" && (
                 <span className="absolute right-2 text-xs px-1.5 py-0.5 rounded bg-[#1977d4]/20 text-[#1977d4]">
                   Coming Soon
                 </span>

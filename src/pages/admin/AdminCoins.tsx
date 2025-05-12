@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +78,18 @@ const transactionsData = [
   }
 ];
 
+// Sample users data for selection
+const usersList = [
+  { id: "1", username: "FireHawk22" },
+  { id: "2", username: "StormRider" },
+  { id: "3", username: "ShadowNinja" },
+  { id: "4", username: "ThunderBolt" },
+  { id: "5", username: "ViperStrike" },
+  { id: "6", username: "RazorGamer" },
+  { id: "7", username: "NinjaWarrior" },
+  { id: "8", username: "PhoenixSlayer" }
+];
+
 const AdminCoins = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState(transactionsData);
@@ -84,6 +97,7 @@ const AdminCoins = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isAddToBankDialogOpen, setIsAddToBankDialogOpen] = useState(false);
   
   // Admin wallet balance
   const [adminBalance, setAdminBalance] = useState(50000);
@@ -93,6 +107,10 @@ const AdminCoins = () => {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<"credit" | "debit">("credit");
+  
+  // Add to bank form state
+  const [addAmount, setAddAmount] = useState("");
+  const [addSource, setAddSource] = useState("admin_deposit");
   
   // Filter transactions based on search and type
   const filteredTransactions = transactions.filter(transaction => {
@@ -119,6 +137,16 @@ const AdminCoins = () => {
       toast({
         title: "Error",
         description: "Please enter a valid amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if admin has enough balance for transfer
+    if (isTransferDialogOpen && parseInt(amount) > adminBalance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "Admin wallet does not have enough coins for this transfer.",
         variant: "destructive",
       });
       return;
@@ -156,6 +184,41 @@ const AdminCoins = () => {
     resetForm();
     setIsAdjustDialogOpen(false);
     setIsTransferDialogOpen(false);
+  };
+  
+  const handleAddToBank = () => {
+    if (!addAmount || parseInt(addAmount) <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Update admin balance
+    setAdminBalance(adminBalance + parseInt(addAmount));
+    
+    // Create a new transaction record
+    const newTransaction = {
+      id: (transactions.length + 1).toString(),
+      username: "AdminWallet",
+      type: "credit",
+      amount: parseInt(addAmount),
+      description: `Admin bank deposit: ${addSource}`,
+      date: new Date().toLocaleString()
+    };
+    
+    setTransactions([newTransaction, ...transactions]);
+    
+    toast({
+      title: "Bank Balance Updated",
+      description: `Added ${addAmount} rdCoins to the admin wallet.`,
+    });
+    
+    setAddAmount("");
+    setAddSource("admin_deposit");
+    setIsAddToBankDialogOpen(false);
   };
   
   const resetForm = () => {
@@ -236,6 +299,15 @@ const AdminCoins = () => {
               >
                 <Send className="mr-2 h-4 w-4" />
                 Transfer to User
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-green-500/20 text-green-400 hover:bg-green-500/10"
+                onClick={() => setIsAddToBankDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Funds
               </Button>
             </div>
           </CardContent>
@@ -378,22 +450,27 @@ const AdminCoins = () => {
           
           <div className="space-y-4 my-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="username" className="block text-sm font-medium text-white mb-1">
                 Username
-              </label>
-              <Input
-                id="username"
-                placeholder="Enter username"
-                className="bg-esports-darker border-esports-accent/20 text-white"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              </Label>
+              <Select value={username} onValueChange={setUsername}>
+                <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white">
+                  <SelectValue placeholder="Select username" />
+                </SelectTrigger>
+                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                  {usersList.map(user => (
+                    <SelectItem key={user.id} value={user.username}>
+                      {user.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label htmlFor="adjustmentType" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="adjustmentType" className="block text-sm font-medium text-white mb-1">
                 Adjustment Type
-              </label>
+              </Label>
               <Select
                 value={adjustmentType}
                 onValueChange={(value: "credit" | "debit") => setAdjustmentType(value)}
@@ -409,9 +486,9 @@ const AdminCoins = () => {
             </div>
             
             <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="amount" className="block text-sm font-medium text-white mb-1">
                 Amount
-              </label>
+              </Label>
               <Input
                 id="amount"
                 type="number"
@@ -424,9 +501,9 @@ const AdminCoins = () => {
             </div>
             
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="description" className="block text-sm font-medium text-white mb-1">
                 Description (Optional)
-              </label>
+              </Label>
               <Input
                 id="description"
                 placeholder="Enter reason for adjustment"
@@ -478,22 +555,27 @@ const AdminCoins = () => {
             </div>
             
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="username" className="block text-sm font-medium text-white mb-1">
                 Recipient Username
-              </label>
-              <Input
-                id="username"
-                placeholder="Enter username"
-                className="bg-esports-darker border-esports-accent/20 text-white"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              </Label>
+              <Select value={username} onValueChange={setUsername}>
+                <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white">
+                  <SelectValue placeholder="Select username" />
+                </SelectTrigger>
+                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                  {usersList.map(user => (
+                    <SelectItem key={user.id} value={user.username}>
+                      {user.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="amount" className="block text-sm font-medium text-white mb-1">
                 Amount to Transfer
-              </label>
+              </Label>
               <Input
                 id="amount"
                 type="number"
@@ -517,9 +599,9 @@ const AdminCoins = () => {
             </div>
             
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-white mb-1">
+              <Label htmlFor="description" className="block text-sm font-medium text-white mb-1">
                 Description (Optional)
-              </label>
+              </Label>
               <Input
                 id="description"
                 placeholder="Enter reason for transfer"
@@ -548,6 +630,80 @@ const AdminCoins = () => {
               className="bg-esports-accent hover:bg-esports-accent/80"
             >
               Transfer Coins
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add to Bank Dialog */}
+      <Dialog open={isAddToBankDialogOpen} onOpenChange={setIsAddToBankDialogOpen}>
+        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
+          <DialogHeader>
+            <DialogTitle>Add Funds to Admin Wallet</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Add rdCoins to the admin wallet.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div className="bg-esports-darker p-3 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Current Admin Balance:</span>
+                <span className="text-yellow-500 font-bold">{adminBalance} rdCoins</span>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="addAmount" className="block text-sm font-medium text-white mb-1">
+                Amount to Add
+              </Label>
+              <Input
+                id="addAmount"
+                type="number"
+                min="1"
+                placeholder="Enter amount"
+                className="bg-esports-darker border-esports-accent/20 text-white"
+                value={addAmount}
+                onChange={(e) => setAddAmount(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="addSource" className="block text-sm font-medium text-white mb-1">
+                Source
+              </Label>
+              <Select
+                value={addSource}
+                onValueChange={setAddSource}
+              >
+                <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white">
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                  <SelectItem value="admin_deposit">Admin Deposit</SelectItem>
+                  <SelectItem value="payment_gateway">Payment Gateway</SelectItem>
+                  <SelectItem value="sponsorship">Sponsorship</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setIsAddToBankDialogOpen(false)}
+              className="text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleAddToBank}
+              disabled={!addAmount || parseInt(addAmount) <= 0}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Add to Wallet
             </Button>
           </DialogFooter>
         </DialogContent>

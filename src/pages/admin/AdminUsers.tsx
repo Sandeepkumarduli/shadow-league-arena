@@ -1,12 +1,14 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins } from "lucide-react";
+import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Dialog, 
   DialogContent, 
@@ -71,15 +73,28 @@ const usersData = [
 
 const AdminUsers = () => {
   const navigate = useNavigate();
+  const [users, setUsers] = useState(usersData);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userToView, setUserToView] = useState<string | null>(null);
   const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
+  const [isSendCoinsOpen, setIsSendCoinsOpen] = useState(false);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  
+  // Form states
+  const [coinsAmount, setCoinsAmount] = useState("");
+  const [coinsReason, setCoinsReason] = useState("");
+  
+  // New user form states
+  const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   
   // Filter users based on selections
-  const filteredUsers = usersData.filter(user => {
+  const filteredUsers = users.filter(user => {
     // Apply status filter
     if (statusFilter !== "all" && user.status !== statusFilter) return false;
     
@@ -93,7 +108,7 @@ const AdminUsers = () => {
   });
   
   // Find the currently selected user
-  const selectedUser = userToView ? usersData.find(user => user.id === userToView) : null;
+  const selectedUser = userToView ? users.find(user => user.id === userToView) : null;
 
   const handleViewUser = (userId: string) => {
     setUserToView(userId);
@@ -108,17 +123,26 @@ const AdminUsers = () => {
   const confirmBanUser = () => {
     if (!userToView) return;
     
-    const user = usersData.find(u => u.id === userToView);
-    const action = user?.status === "banned" ? "unbanned" : "banned";
-    
-    // In a real application, this would be an API call to ban the user
-    toast({
-      title: `User ${action.charAt(0).toUpperCase() + action.slice(1)}`,
-      description: `The user has been successfully ${action}.`,
+    // Toggle user status
+    const updatedUsers = users.map(user => {
+      if (user.id === userToView) {
+        const newStatus = user.status === "banned" ? "active" : "banned";
+        
+        toast({
+          title: `User ${newStatus === "active" ? "Unbanned" : "Banned"}`,
+          description: `The user has been successfully ${newStatus === "active" ? "unbanned" : "banned"}.`,
+        });
+        
+        return {
+          ...user,
+          status: newStatus
+        };
+      }
+      return user;
     });
     
+    setUsers(updatedUsers);
     setIsBanDialogOpen(false);
-    // In a real app, you would update the state or refetch the data
   };
   
   const handleResetPassword = (userId: string) => {
@@ -129,13 +153,90 @@ const AdminUsers = () => {
   const confirmResetPassword = () => {
     if (!userToView) return;
     
-    // In a real application, this would be an API call to reset the user's password
     toast({
       title: "Password Reset",
       description: "A password reset email has been sent to the user.",
     });
     
     setIsResetPasswordOpen(false);
+  };
+  
+  const handleSendCoins = (userId: string) => {
+    setUserToView(userId);
+    setCoinsAmount("");
+    setCoinsReason("");
+    setIsSendCoinsOpen(true);
+  };
+  
+  const confirmSendCoins = () => {
+    if (!userToView || !coinsAmount || parseInt(coinsAmount) <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount of coins.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Update user coins
+    const updatedUsers = users.map(user => {
+      if (user.id === userToView) {
+        return {
+          ...user,
+          rdCoins: user.rdCoins + parseInt(coinsAmount)
+        };
+      }
+      return user;
+    });
+    
+    setUsers(updatedUsers);
+    
+    toast({
+      title: "Coins Sent",
+      description: `${coinsAmount} rdCoins have been sent to the user.`,
+    });
+    
+    setIsSendCoinsOpen(false);
+  };
+  
+  const handleCreateUser = () => {
+    // Form validation
+    if (!newUsername.trim() || !newEmail.trim() || !newPhone.trim() || !newPassword.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Create new user
+    const newUser = {
+      id: (users.length + 1).toString(),
+      username: newUsername,
+      email: newEmail,
+      phone: newPhone,
+      registeredOn: new Date().toISOString().split('T')[0],
+      lastActive: "Never",
+      tournamentCount: 0,
+      winCount: 0,
+      status: "active",
+      rdCoins: 0
+    };
+    
+    setUsers([...users, newUser]);
+    
+    toast({
+      title: "User Created",
+      description: `User "${newUsername}" has been created successfully.`,
+    });
+    
+    // Reset form and close dialog
+    setNewUsername("");
+    setNewEmail("");
+    setNewPhone("");
+    setNewPassword("");
+    setIsCreateUserOpen(false);
   };
 
   return (
@@ -153,6 +254,14 @@ const AdminUsers = () => {
           </Button>
           <h1 className="text-2xl font-bold text-white">Manage Users</h1>
         </div>
+        
+        <Button
+          onClick={() => setIsCreateUserOpen(true)}
+          className="bg-esports-accent hover:bg-esports-accent/80 text-white"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
       </div>
       
       {/* Filters */}
@@ -202,25 +311,20 @@ const AdminUsers = () => {
             <Card key={user.id} className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-5">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
-                    <div className="bg-esports-accent/20 rounded-full p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-esports-accent/20 rounded-full p-4 flex-shrink-0">
                       <User className="h-8 w-8 text-esports-accent" />
                     </div>
                     
-                    <div className="flex-1">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-bold text-white">{user.username}</h3>
-                          <Badge variant={user.status === "active" ? "default" : "destructive"} className={user.status === "active" ? "bg-green-600/20 text-green-400 border-none" : "bg-red-900/20 border-none"}>
-                            {user.status === "active" ? "Active" : "Banned"}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-gray-400">
-                          Registered: {user.registeredOn}
-                        </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl font-bold text-white">{user.username}</h3>
+                        <Badge variant={user.status === "active" ? "default" : "destructive"} className={user.status === "active" ? "bg-green-600/20 text-green-400 border-none" : "bg-red-900/20 border-none"}>
+                          {user.status === "active" ? "Active" : "Banned"}
+                        </Badge>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1 mt-2">
                         <div className="flex items-center text-sm text-gray-300">
                           <Mail className="h-4 w-4 mr-2 text-esports-accent" />
                           <span>{user.email}</span>
@@ -230,9 +334,21 @@ const AdminUsers = () => {
                           <Phone className="h-4 w-4 mr-2 text-esports-accent" />
                           <span>{user.phone}</span>
                         </div>
+                      </div>
+                      
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="flex items-center text-sm text-gray-300 bg-esports-darker px-2 py-1 rounded-md">
+                          <Trophy className="h-4 w-4 mr-1 text-esports-accent" />
+                          <span>Tournaments: {user.tournamentCount}</span>
+                        </div>
                         
-                        <div className="flex items-center text-sm text-gray-300">
-                          <Coins className="h-4 w-4 mr-2 text-yellow-500" />
+                        <div className="flex items-center text-sm text-gray-300 bg-esports-darker px-2 py-1 rounded-md">
+                          <Shield className="h-4 w-4 mr-1 text-esports-accent" />
+                          <span>Wins: {user.winCount}</span>
+                        </div>
+                        
+                        <div className="flex items-center text-sm text-yellow-500 bg-esports-darker px-2 py-1 rounded-md">
+                          <Coins className="h-4 w-4 mr-1" />
                           <span>{user.rdCoins} rdCoins</span>
                         </div>
                       </div>
@@ -253,11 +369,21 @@ const AdminUsers = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="border-blue-500/20 text-blue-400 hover:bg-blue-500/10"
+                      onClick={() => handleSendCoins(user.id)}
+                    >
+                      <Coins className="h-4 w-4 mr-2" />
+                      Send Coins
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
                       onClick={() => handleResetPassword(user.id)}
                     >
                       <LockKeyhole className="h-4 w-4 mr-2" />
-                      Reset Password
+                      Reset
                     </Button>
                     
                     <Button
@@ -269,7 +395,7 @@ const AdminUsers = () => {
                       onClick={() => handleBanUser(user.id)}
                     >
                       {user.status === "banned" ? <Check className="h-4 w-4 mr-2" /> : <Ban className="h-4 w-4 mr-2" />}
-                      {user.status === "banned" ? "Unban User" : "Ban User"}
+                      {user.status === "banned" ? "Unban" : "Ban"}
                     </Button>
                   </div>
                 </div>
@@ -282,6 +408,143 @@ const AdminUsers = () => {
           </div>
         )}
       </div>
+      
+      {/* Send Coins Dialog */}
+      <Dialog open={isSendCoinsOpen} onOpenChange={setIsSendCoinsOpen}>
+        {selectedUser && (
+          <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-yellow-500" />
+                Send rdCoins to {selectedUser.username}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Current balance: {selectedUser.rdCoins} rdCoins
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 my-2">
+              <div>
+                <Label htmlFor="amount" className="text-white">Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="1"
+                  placeholder="Enter amount of rdCoins"
+                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                  value={coinsAmount}
+                  onChange={(e) => setCoinsAmount(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="reason" className="text-white">Reason (optional)</Label>
+                <Input
+                  id="reason"
+                  placeholder="Enter reason for sending coins"
+                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                  value={coinsReason}
+                  onChange={(e) => setCoinsReason(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => setIsSendCoinsOpen(false)}
+                className="text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={confirmSendCoins}
+                className="bg-esports-accent hover:bg-esports-accent/80"
+              >
+                Send rdCoins
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Create User Dialog */}
+      <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
+        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Fill in the details to create a new user account.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-2">
+            <div>
+              <Label htmlFor="username" className="text-white">Username</Label>
+              <Input
+                id="username"
+                placeholder="Enter username"
+                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email" className="text-white">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter email address"
+                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="phone" className="text-white">Phone Number</Label>
+              <Input
+                id="phone"
+                placeholder="Enter phone number"
+                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="password" className="text-white">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter password"
+                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setIsCreateUserOpen(false)}
+              className="text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCreateUser}
+              className="bg-esports-accent hover:bg-esports-accent/80"
+            >
+              Create User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* User Details Dialog */}
       <Dialog open={isUserDetailsOpen} onOpenChange={setIsUserDetailsOpen}>

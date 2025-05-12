@@ -10,7 +10,9 @@ import {
   PlusCircle,
   MessageSquare,
   Newspaper,
-  ShieldCheck
+  ShieldCheck,
+  Activity,
+  Award
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
@@ -42,6 +44,11 @@ const menuItems = [
     href: "/admin/users",
   },
   {
+    title: "Update Winners",
+    icon: Award,
+    href: "/admin/update-winners",
+  },
+  {
     title: "Broadcast",
     icon: MessageSquare,
     href: "/admin/broadcast",
@@ -50,6 +57,16 @@ const menuItems = [
     title: "Edit News Section",
     icon: Newspaper,
     href: "/admin/news",
+  },
+  {
+    title: "Activity Log",
+    icon: Activity,
+    href: "/admin/activity",
+  },
+  {
+    title: "Big Tournaments",
+    icon: Trophy,
+    href: "/admin/big-tournaments",
   },
   {
     title: "Settings",
@@ -86,7 +103,7 @@ const AdminSidebar = ({ className }: AdminSidebarProps) => {
       </div>
 
       {/* Navigation */}
-      <div className="p-4">
+      <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
         <nav className="space-y-1">
           {menuItems.map((item) => (
             <NavLink
