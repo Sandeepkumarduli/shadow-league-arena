@@ -63,7 +63,7 @@ const Sidebar = ({ className }: { className?: string }) => {
   // Only add the Request Admin link if user isn't already an admin
   if (!isAdmin) {
     menuItems.push({
-      title: "Request as Admin",
+      title: "Request Admin",
       icon: Users,
       href: "/request-admin",
     });
@@ -89,7 +89,7 @@ const Sidebar = ({ className }: { className?: string }) => {
               key={item.title}
               to={item.href}
               className={({ isActive }) => cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors relative",
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                 isActive
                   ? "bg-[#1977d4]/20 text-[#1977d4]"
                   : "text-gray-300 hover:bg-[#1977d4]/10 hover:text-[#1977d4]"
@@ -97,12 +97,6 @@ const Sidebar = ({ className }: { className?: string }) => {
             >
               <item.icon className="h-5 w-5" />
               <span>{item.title}</span>
-              
-              {item.title === "Request as Admin" && !isAdmin && (
-                <span className="absolute right-2 text-xs px-1.5 py-0.5 rounded bg-[#1977d4]/20 text-[#1977d4]">
-                  Request
-                </span>
-              )}
             </NavLink>
           ))}
         </nav>

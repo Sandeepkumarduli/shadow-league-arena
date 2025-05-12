@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,6 +16,8 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // Form schema with validation
 const profileSchema = z.object({
@@ -48,17 +50,56 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [userData, setUserData] = useState({
+    username: "",
+    email: "",
+    phone: "",
+    bgmiId: "",
+  });
   
-  // Mock user data - in a real app, this would come from auth context
-  const userData = {
-    username: "ProGamer123",
-    email: "progamer@example.com",
-  };
+  const { user } = useAuth();
+
+  // Fetch user data from database
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('username, email, phone')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) throw error;
+        
+        setUserData({
+          username: data.username || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          bgmiId: data.bgmiId || "", // This might be in a user_profiles table in a real implementation
+        });
+        
+        // Update form with fetched data
+        form.setValue("phoneNumber", data.phone || "");
+        form.setValue("bgmiId", data.bgmiId || "");
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load user data. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchUserData();
+  }, [user]);
 
   // Default values for the form
   const defaultValues: ProfileFormValues = {
-    phoneNumber: "1234567890", // In a real app, this would come from user data
-    bgmiId: "BGMI12345", // In a real app, this would come from user data
+    phoneNumber: "",
+    bgmiId: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -72,9 +113,27 @@ const Profile = () => {
   const onSubmit = async (data: ProfileFormValues) => {
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Update user phone in the database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          phone: data.phoneNumber,
+          // In a real implementation, you might update bgmiId in a user_profiles table
+        })
+        .eq('id', user?.id);
+      
+      if (updateError) throw updateError;
+      
+      // Handle password change if requested
+      if (data.currentPassword && data.newPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: data.newPassword,
+        });
+        
+        if (passwordError) throw passwordError;
+      }
+      
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully!",
@@ -86,7 +145,16 @@ const Profile = () => {
         form.setValue("newPassword", "");
         form.setValue("confirmPassword", "");
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

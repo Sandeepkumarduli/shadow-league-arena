@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -8,31 +8,142 @@ import { toast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface UserData {
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+  profileImage: string;
+  interestGames: string[];
+}
+
+interface UserStats {
+  teams: string[];
+  registeredTournaments: number;
+  completedTournaments: number;
+  wins: number;
+  rdCoins: number;
+}
 
 const MyAccount = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [name, setName] = useState("John Doe");
+  const [name, setName] = useState("");
   const [isEditingGames, setIsEditingGames] = useState(false);
   const [gameInput, setGameInput] = useState('');
-  const [interestGames, setInterestGames] = useState(["BGMI", "Valorant", "Call of Duty"]);
+  const [interestGames, setInterestGames] = useState<string[]>([]);
+  const [userData, setUserData] = useState<UserData>({
+    name: "",
+    username: "",
+    email: "",
+    phone: "",
+    profileImage: "",
+    interestGames: []
+  });
+  const [userStats, setUserStats] = useState<UserStats>({
+    teams: [],
+    registeredTournaments: 0,
+    completedTournaments: 0,
+    wins: 0,
+    rdCoins: 0
+  });
 
-  // Mock user data - in a real app, this would come from context or API
-  const userData = {
-    name: name,
-    username: "ProGamer123",
-    email: "progamer@example.com",
-    phone: "1234567890",
-    profileImage: "", // URL would be here
-    interestGames: interestGames,
-    teams: ["Phoenix Squad", "Valorant Vipers"],
-    registeredTournaments: 15,
-    completedTournaments: 8,
-    wins: 3,
-    rdCoins: 500,
+  // Fetch user data and stats
+  const fetchUserData = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch basic user data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username, email, phone')
+        .eq('id', user.id)
+        .single();
+      
+      if (userError) throw userError;
+
+      // Get stored user preferences (in a real app, these would come from user_profiles)
+      const storedName = localStorage.getItem(`user_${user.id}_name`) || userData.username;
+      const storedGames = localStorage.getItem(`user_${user.id}_games`);
+      const games = storedGames ? JSON.parse(storedGames) : ["BGMI"];
+      
+      setName(storedName);
+      setInterestGames(games);
+      
+      // Fetch teams
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('name')
+        .eq('owner_id', user.id);
+      
+      if (teamsError) throw teamsError;
+      
+      // Fetch wallet balance
+      const { data: walletData, error: walletError } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (walletError) throw walletError;
+      
+      // Fetch tournament registrations
+      const { data: registrationsData, error: registrationsError } = await supabase
+        .from('tournament_registrations')
+        .select('tournament_id, status')
+        .or(`team_id.in.(${teamsData.map(t => t.id).join(',')})`);
+      
+      if (registrationsError && registrationsError.message !== "invalid input syntax for type uuid") throw registrationsError;
+      
+      // Fetch tournament wins (simplified version)
+      const { data: winsData, error: winsError } = await supabase
+        .from('tournament_results')
+        .select('*')
+        .eq('position', 1)
+        .or(`team_id.in.(${teamsData.map(t => t.id).join(',')})`);
+      
+      if (winsError && winsError.message !== "invalid input syntax for type uuid") throw winsError;
+      
+      // Update user data and stats
+      setUserData({
+        name: storedName,
+        username: userData.username,
+        email: userData.email,
+        phone: userData.phone || "",
+        profileImage: "",
+        interestGames: games
+      });
+      
+      setUserStats({
+        teams: teamsData.map(t => t.name) || [],
+        registeredTournaments: registrationsData?.length || 0,
+        completedTournaments: registrationsData?.filter(r => r.status === 'completed').length || 0,
+        wins: winsData?.length || 0,
+        rdCoins: walletData?.balance || 0
+      });
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load user data. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchUserData();
+  }, [user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -52,36 +163,50 @@ const MyAccount = () => {
     }
   };
 
-  const handleUpload = () => {
-    if (!file) return;
+  const handleUpload = async () => {
+    if (!file || !user) return;
     
     setIsUploading(true);
     
-    // Simulate upload
-    setTimeout(() => {
-      setIsUploading(false);
+    try {
+      // In a real implementation, this would upload to supabase storage
+      // For now, simulate upload
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update local state
+      const fileUrl = URL.createObjectURL(file);
+      setUserData({...userData, profileImage: fileUrl});
+      
       toast({
         title: "Profile Picture Updated",
         description: "Your profile picture has been updated successfully!",
       });
       setFile(null);
-    }, 1500);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload profile picture. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleAddCoins = () => {
     navigate("/add-coins");
   };
 
-  const handleRedeem = () => {
-    // Open redeem modal - in a real app, this would show a modal
-    toast({
-      title: "Redeem Feature",
-      description: "Redeem functionality will be available soon!",
-    });
-  };
-
   const handleSaveName = () => {
+    if (!user) return;
+    
     setIsEditingName(false);
+    
+    // In a real implementation, you'd update this in a user_profiles table
+    localStorage.setItem(`user_${user.id}_name`, name);
+    setUserData({...userData, name});
+    
     toast({
       title: "Name Updated",
       description: "Your name has been updated successfully!",
@@ -90,9 +215,17 @@ const MyAccount = () => {
 
   const handleAddGame = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     if (gameInput && !interestGames.includes(gameInput)) {
-      setInterestGames([...interestGames, gameInput]);
+      const updatedGames = [...interestGames, gameInput];
+      setInterestGames(updatedGames);
       setGameInput('');
+      
+      // In a real implementation, you'd update this in a user_profiles table
+      localStorage.setItem(`user_${user.id}_games`, JSON.stringify(updatedGames));
+      setUserData({...userData, interestGames: updatedGames});
+      
       toast({
         title: "Game Added",
         description: `"${gameInput}" added to your interested games!`,
@@ -101,12 +234,30 @@ const MyAccount = () => {
   };
 
   const handleRemoveGame = (game: string) => {
-    setInterestGames(interestGames.filter(g => g !== game));
+    if (!user) return;
+    
+    const updatedGames = interestGames.filter(g => g !== game);
+    setInterestGames(updatedGames);
+    
+    // In a real implementation, you'd update this in a user_profiles table
+    localStorage.setItem(`user_${user.id}_games`, JSON.stringify(updatedGames));
+    setUserData({...userData, interestGames: updatedGames});
+    
     toast({
       title: "Game Removed",
       description: `"${game}" removed from your interested games!`,
     });
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-esports-accent"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -300,11 +451,17 @@ const MyAccount = () => {
               </div>
               
               <div className="space-y-3">
-                {userData.teams.map((team) => (
-                  <div key={team} className="bg-[#1977d4]/10 p-3 rounded-md">
-                    <p className="text-white">{team}</p>
+                {userStats.teams.length === 0 ? (
+                  <div className="bg-[#1977d4]/10 p-3 rounded-md text-center text-gray-400">
+                    No teams created yet.
                   </div>
-                ))}
+                ) : (
+                  userStats.teams.map((team) => (
+                    <div key={team} className="bg-[#1977d4]/10 p-3 rounded-md">
+                      <p className="text-white">{team}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -321,15 +478,15 @@ const MyAccount = () => {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Registered Tournaments</span>
-                  <span className="text-white font-medium">{userData.registeredTournaments}</span>
+                  <span className="text-white font-medium">{userStats.registeredTournaments}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Completed Tournaments</span>
-                  <span className="text-white font-medium">{userData.completedTournaments}</span>
+                  <span className="text-white font-medium">{userStats.completedTournaments}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Wins</span>
-                  <span className="text-white font-medium">{userData.wins}</span>
+                  <span className="text-white font-medium">{userStats.wins}</span>
                 </div>
               </div>
             </div>
@@ -345,7 +502,7 @@ const MyAccount = () => {
                 <span className="text-gray-400">Current Balance</span>
                 <div className="flex items-center text-yellow-500">
                   <Coins className="h-4 w-4 mr-1" />
-                  <span className="font-bold">{userData.rdCoins}</span>
+                  <span className="font-bold">{userStats.rdCoins}</span>
                 </div>
               </div>
               

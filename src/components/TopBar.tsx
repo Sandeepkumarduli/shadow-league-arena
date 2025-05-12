@@ -1,177 +1,204 @@
 
 import { useState } from "react";
-import { Bell, RefreshCcw, User, Coins, Plus, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
+  Bell, 
+  Search, 
+  User, 
+  Settings, 
+  LogOut, 
+  ChevronDown,
+  RefreshCcw
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import NotificationsPanel from "./NotificationsPanel";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TopBarProps {
-  onRefresh?: () => void;
   isAdmin?: boolean;
 }
 
-const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
+const TopBar = ({ isAdmin = false }: TopBarProps) => {
   const navigate = useNavigate();
-  const { logout, isAdmin: userIsAdmin } = useAuth();
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  // Check if any live tournaments are available - this would come from context or API in a real app
-  const hasLiveTournaments = false; 
-  const rdCoins = 0; // This would come from context or API in a real app
-
-  const handleProfileClick = () => {
-    navigate(isAdmin ? "/admin/settings" : "/profile");
+  const { user, logout } = useAuth();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userStatus, setUserStatus] = useState("Active");
+  
+  const toggleNotifications = () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
   };
 
-  const handleAccountClick = () => {
-    navigate(isAdmin ? "/admin/settings" : "/my-account");
-  };
-
-  const handleAddCoins = () => {
-    navigate(isAdmin ? "/admin/coins" : "/add-coins");
-  };
-
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    
+    try {
+      // Update user status to active
+      if (user) {
+        // In a real implementation, you might update a status field in the users table
+        setUserStatus("Active");
+      }
+      
+      // Dispatch a custom event that components can listen for to refresh their data
+      const refreshEvent = new CustomEvent('app:refresh');
+      window.dispatchEvent(refreshEvent);
+      
+      toast({
+        title: "Data Refreshed",
+        description: "All data has been refreshed from the database.",
+      });
+      
+      // Reload the current page to ensure fresh data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
-    <div className="h-16 bg-esports-darker/80 backdrop-blur-md border-b border-esports-accent/20 flex items-center justify-between px-6">
-      <div>
-        <h1 className="text-xl font-semibold text-white">{isAdmin ? "Admin Dashboard" : "Dashboard"}</h1>
+    <div className="flex items-center justify-between px-4 md:px-6 h-16 border-b border-[#1977d4]/20 bg-esports-dark">
+      {/* Left side - Breadcrumbs or title */}
+      <div className="flex items-center">
+        {isAdmin ? (
+          <h2 className="text-xl font-bold font-rajdhani text-white tracking-wider">
+            ADMIN<span className="text-[#1977d4]">PANEL</span>
+          </h2>
+        ) : null}
       </div>
-      
-      <div className="flex items-center gap-3">
-        {/* rdCoins display */}
-        <div className="flex items-center bg-esports-dark border border-yellow-500/30 rounded-md px-3 py-1">
-          <Coins className="h-4 w-4 text-yellow-500 mr-2" />
-          <span className="text-yellow-500 font-semibold">{rdCoins}</span>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleAddCoins}
-            className="h-5 w-5 ml-2 text-gray-300 hover:text-white hover:bg-yellow-500/20"
-            title="Add rdCoins"
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-        
-        {/* Active/Offline Status */}
-        {!isAdmin && (
-          <Badge variant="outline" className={`${hasLiveTournaments ? 'bg-esports-green/20 text-esports-green' : 'bg-gray-600/20 text-gray-400'} border-none px-3 py-1.5 flex items-center gap-1.5`}>
-            {hasLiveTournaments && <span className="w-2 h-2 bg-esports-green rounded-full animate-pulse"></span>}
-            <span>{hasLiveTournaments ? 'Active' : 'Offline'}</span>
-          </Badge>
-        )}
-        
-        {/* Refresh Button */}
+
+      {/* Refresh button */}
+      <div className="hidden md:flex ml-4">
         <Button 
-          onClick={handleRefresh} 
-          variant="ghost" 
-          size="icon" 
-          className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
-          title="Refresh data"
+          variant="outline" 
+          size="sm" 
+          className="border-[#1977d4]/20 text-[#1977d4] hover:bg-[#1977d4]/10"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
         >
-          <RefreshCcw className="h-5 w-5" />
+          <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? "Refreshing..." : "Refresh"}
         </Button>
-        
+      </div>
+
+      {/* Right side - Search, Notifications, User */}
+      <div className="flex items-center space-x-4">
+        {/* Search */}
+        <div className="hidden md:block">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="pl-10 pr-4 py-2 rounded-md bg-esports-darker border border-[#1977d4]/20 text-white text-sm focus:outline-none focus:border-[#1977d4]"
+            />
+          </div>
+        </div>
+
         {/* Notifications */}
         <div className="relative">
           <Button 
-            variant="ghost" 
-            size="icon" 
-            className="relative text-gray-300 hover:text-white hover:bg-esports-accent/10"
-            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+            variant="ghost"
+            size="icon"
+            className="relative text-gray-300 hover:text-white"
+            onClick={toggleNotifications}
           >
             <Bell className="h-5 w-5" />
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#1977d4]">
+              0
+            </Badge>
           </Button>
-          
-          {isNotificationOpen && (
-            <NotificationsPanel onClose={() => setIsNotificationOpen(false)} />
+
+          {isNotificationsOpen && (
+            <NotificationsPanel onClose={() => setIsNotificationsOpen(false)} />
           )}
         </div>
-        
-        {/* Admin dashboard link - only shown if user is admin */}
-        {userIsAdmin && !isAdmin && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
-            title="Switch to Admin Dashboard"
-            onClick={() => navigate("/admin")}
-          >
-            <User className="h-5 w-5" />
-          </Button>
-        )}
-        
-        {/* User dashboard link - only shown in admin view */}
-        {isAdmin && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
-            title="Switch to User Dashboard"
-            onClick={() => navigate("/dashboard")}
-          >
-            <User className="h-5 w-5" />
-          </Button>
-        )}
-        
-        {/* Logout Button */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
-          title="Logout"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-5 w-5" />
-        </Button>
-        
-        {/* User profile */}
+
+        {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white hover:bg-esports-accent/10">
-              <User className="h-5 w-5" />
+            <Button variant="ghost" className="p-0">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 border border-[#1977d4]/50">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="bg-[#1977d4]/20 text-[#1977d4]">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-white leading-none">
+                    {user?.email?.split('@')[0]}
+                  </p>
+                  <p className="text-xs text-gray-400 flex items-center">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5"></span>
+                    {userStatus}
+                  </p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56 mr-2 bg-esports-dark border-esports-accent/30">
-            <DropdownMenuLabel className="text-gray-300">My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-esports-accent/20" />
+          
+          <DropdownMenuContent align="end" className="w-56 bg-esports-dark border-[#1977d4]/20">
+            <DropdownMenuLabel className="text-white">My Account</DropdownMenuLabel>
+            
+            <DropdownMenuSeparator className="bg-[#1977d4]/20" />
+            
             <DropdownMenuItem 
-              className="text-gray-300 hover:text-white hover:bg-esports-accent/10 cursor-pointer"
-              onClick={handleProfileClick}
+              className="text-gray-300 hover:text-white focus:text-white cursor-pointer"
+              onClick={() => navigate("/profile")}
             >
-              Profile Settings
+              <User className="mr-2 h-4 w-4" />
+              Profile
             </DropdownMenuItem>
+            
             <DropdownMenuItem 
-              className="text-gray-300 hover:text-white hover:bg-esports-accent/10 cursor-pointer"
-              onClick={handleAccountClick}
+              className="text-gray-300 hover:text-white focus:text-white cursor-pointer"
+              onClick={() => navigate("/my-account")}
             >
-              Account Details
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
             </DropdownMenuItem>
+            
+            <DropdownMenuSeparator className="bg-[#1977d4]/20" />
+            
             <DropdownMenuItem 
-              className="text-gray-300 hover:text-white hover:bg-esports-accent/10 cursor-pointer"
+              className="text-red-400 hover:text-red-300 focus:text-red-300 cursor-pointer"
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <LogOut className="mr-2 h-4 w-4" />
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
