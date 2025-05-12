@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bell, RefreshCcw, User, Coins, Plus, LogOut } from "lucide-react";
+import { Bell, RefreshCcw, User, Coins, Plus, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -17,9 +17,10 @@ import NotificationsPanel from "./NotificationsPanel";
 
 interface TopBarProps {
   onRefresh?: () => void;
+  isAdmin?: boolean;
 }
 
-const TopBar = ({ onRefresh }: TopBarProps) => {
+const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -28,15 +29,15 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
   const rdCoins = 500; // This would come from context or API in a real app
 
   const handleProfileClick = () => {
-    navigate("/profile");
+    navigate(isAdmin ? "/admin/settings" : "/profile");
   };
 
   const handleAccountClick = () => {
-    navigate("/my-account");
+    navigate(isAdmin ? "/admin/settings" : "/my-account");
   };
 
   const handleAddCoins = () => {
-    navigate("/add-coins");
+    navigate(isAdmin ? "/admin/coins" : "/add-coins");
   };
 
   const handleRefresh = () => {
@@ -50,10 +51,18 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
     navigate("/");
   };
 
+  const handleAdminDashboard = () => {
+    navigate("/admin");
+  };
+
+  const handleUserDashboard = () => {
+    navigate("/dashboard");
+  };
+
   return (
     <div className="h-16 bg-esports-darker/80 backdrop-blur-md border-b border-esports-accent/20 flex items-center justify-between px-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-white">{isAdmin ? "Admin Dashboard" : "Dashboard"}</h1>
       </div>
       
       <div className="flex items-center gap-3">
@@ -73,10 +82,12 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
         </div>
         
         {/* Active/Offline Status */}
-        <Badge variant="outline" className={`${hasLiveTournaments ? 'bg-esports-green/20 text-esports-green' : 'bg-gray-600/20 text-gray-400'} border-none px-3 py-1.5 flex items-center gap-1.5`}>
-          {hasLiveTournaments && <span className="w-2 h-2 bg-esports-green rounded-full animate-pulse"></span>}
-          <span>{hasLiveTournaments ? 'Active' : 'Offline'}</span>
-        </Badge>
+        {!isAdmin && (
+          <Badge variant="outline" className={`${hasLiveTournaments ? 'bg-esports-green/20 text-esports-green' : 'bg-gray-600/20 text-gray-400'} border-none px-3 py-1.5 flex items-center gap-1.5`}>
+            {hasLiveTournaments && <span className="w-2 h-2 bg-esports-green rounded-full animate-pulse"></span>}
+            <span>{hasLiveTournaments ? 'Active' : 'Offline'}</span>
+          </Badge>
+        )}
         
         {/* Refresh Button */}
         <Button 
@@ -105,6 +116,29 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
             <NotificationsPanel onClose={() => setIsNotificationOpen(false)} />
           )}
         </div>
+        
+        {/* Switch between admin/user dashboard */}
+        {isAdmin ? (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
+            title="Switch to User Dashboard"
+            onClick={handleUserDashboard}
+          >
+            <User className="h-5 w-5" />
+          </Button>
+        ) : (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
+            title="Switch to Admin Dashboard"
+            onClick={handleAdminDashboard}
+          >
+            <ShieldCheck className="h-5 w-5" />
+          </Button>
+        )}
         
         {/* Logout Button */}
         <Button 

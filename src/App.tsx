@@ -20,6 +20,17 @@ import Earnings from "./pages/Earnings";
 import AddCoins from "./pages/AddCoins";
 import RequestAdmin from "./pages/RequestAdmin";
 import LoadingSpinner from "./components/LoadingSpinner";
+// Admin Imports
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import CreateTournament from "./pages/admin/CreateTournament";
+import AdminTournaments from "./pages/admin/AdminTournaments";
+import AdminTeams from "./pages/admin/AdminTeams";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminBroadcast from "./pages/admin/AdminBroadcast";
+import AdminNews from "./pages/admin/AdminNews";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminCoins from "./pages/admin/AdminCoins";
+import AdminRequests from "./pages/admin/AdminRequests";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +98,18 @@ const AppRoutes = () => (
       <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
       <Route path="/add-coins" element={<ProtectedRoute><AddCoins /></ProtectedRoute>} />
       <Route path="/request-admin" element={<ProtectedRoute><RequestAdmin /></ProtectedRoute>} />
+      
+      {/* Admin routes - these will be protected with proper role check in a real app */}
+      <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/create-tournament" element={<ProtectedRoute><CreateTournament /></ProtectedRoute>} />
+      <Route path="/admin/tournaments" element={<ProtectedRoute><AdminTournaments /></ProtectedRoute>} />
+      <Route path="/admin/teams" element={<ProtectedRoute><AdminTeams /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+      <Route path="/admin/broadcast" element={<ProtectedRoute><AdminBroadcast /></ProtectedRoute>} />
+      <Route path="/admin/news" element={<ProtectedRoute><AdminNews /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+      <Route path="/admin/coins" element={<ProtectedRoute><AdminCoins /></ProtectedRoute>} />
+      <Route path="/admin/requests" element={<ProtectedRoute><AdminRequests /></ProtectedRoute>} />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
