@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +21,7 @@ interface AuthContextType {
   signup: (username: string, email: string, phone: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean; // Added isLoading property to the context type
 }
 
 // Create context with default values
@@ -33,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => false,
   logout: () => {},
   isAuthenticated: false,
+  isLoading: false, // Added default value for isLoading
 });
 
 // Custom hook to use the auth context
@@ -283,7 +284,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       login, 
       signup, 
       logout, 
-      isAuthenticated 
+      isAuthenticated,
+      isLoading: loading // Expose the loading state to consumers
     }}>
       {children}
     </AuthContext.Provider>
