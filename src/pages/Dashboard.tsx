@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarCheck, ChevronDown, Filter, GameController, Trophy, Users } from "lucide-react";
+import { CalendarCheck, ChevronDown, Filter, Gamepad, Trophy, Users } from "lucide-react";
 
 // Sample tournaments data
 const registeredTournaments = [
@@ -395,7 +394,7 @@ const Dashboard = () => {
                       <div className="bg-esports-accent/10 p-3 rounded-md">
                         <div className="text-esports-accent font-medium mb-2">Results</div>
                         <div className="flex items-center">
-                          <GameController className="h-4 w-4 mr-2 text-esports-accent" />
+                          <Gamepad className="h-4 w-4 mr-2 text-esports-accent" />
                           <span className="text-white">Position: #{tournament.position}</span>
                         </div>
                       </div>
