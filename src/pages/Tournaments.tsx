@@ -1,296 +1,272 @@
 
-import { useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
-import TournamentCard from "@/components/TournamentCard";
-import TournamentFilters from "@/components/TournamentFilters";
-import TeamSelectionModal from "@/components/TeamSelectionModal";
-import { toast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Calendar, Trophy, Users, Filter, ChevronDown, ArrowRight } from "lucide-react";
+import Sidebar from "@/components/Sidebar";
+import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import LoadingSpinner from "@/components/LoadingSpinner";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-// Sample tournaments data
-const availableTournaments = [
-  {
-    id: "1",
-    title: "BGMI Pro League Season 5",
-    game: "BGMI",
-    gameType: "Squad" as const,
-    date: "May 18, 2025 • 8:00 PM",
-    entryFee: "500",
-    prizePool: "3,000",
-    participants: { current: 64, max: 100 },
-    status: "upcoming" as const,
-    isNew: true,
-  },
-  {
-    id: "2",
-    title: "BGMI Weekend Cup",
-    game: "BGMI",
-    gameType: "Duo" as const,
-    date: "Live Now",
-    entryFee: "500",
-    prizePool: "1,200",
-    participants: { current: 98, max: 100 },
-    status: "live" as const,
-    isNew: false,
-  },
-  {
-    id: "3",
-    title: "Valorant Championship Series",
-    game: "Valorant",
-    gameType: "Squad" as const,
-    date: "May 15, 2025 • 7:00 PM",
-    entryFee: "1000",
-    prizePool: "2,500",
-    participants: { current: 32, max: 32 },
-    status: "upcoming" as const,
-    isNew: false,
-  },
-  {
-    id: "5",
-    title: "COD Solo Showdown",
-    game: "COD",
-    gameType: "Solo" as const,
-    date: "May 20, 2025 • 6:00 PM",
-    entryFee: "300",
-    prizePool: "500",
-    participants: { current: 45, max: 100 },
-    status: "upcoming" as const,
-    isNew: true,
-  },
-  {
-    id: "6",
-    title: "BGMI Solo Championships",
-    game: "BGMI",
-    gameType: "Solo" as const,
-    date: "Live Now",
-    entryFee: "200",
-    prizePool: "800",
-    participants: { current: 76, max: 100 },
-    status: "live" as const,
-    isNew: false,
-  },
-  {
-    id: "7",
-    title: "Valorant Duo Masters",
-    game: "Valorant",
-    gameType: "Duo" as const,
-    date: "May 25, 2025 • 7:30 PM",
-    entryFee: "800",
-    prizePool: "1,500",
-    participants: { current: 15, max: 32 },
-    status: "upcoming" as const,
-    isNew: true,
-  },
-];
-
-// Sample teams data
-const myTeams = [
-  { id: "1", name: "Phoenix Rising", game: "BGMI", members: 4 },
-  { id: "2", name: "Valorant Vipers", game: "Valorant", members: 5 },
-  { id: "3", name: "COD Warriors", game: "COD", members: 2 },
-];
+interface Tournament {
+  id: string;
+  name: string;
+  game: string;
+  start_date: string;
+  end_date: string | null;
+  max_teams: number;
+  status: string;
+  prize_pool: number;
+  entry_fee: number;
+  description: string | null;
+}
 
 const Tournaments = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [filteredTournaments, setFilteredTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [gameFilter, setGameFilter] = useState("BGMI"); // Default to BGMI
-  const [gameTypeFilter, setGameTypeFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState<Date | null>(null);
-  const [sortBy, setSortBy] = useState("newest");
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedTournament, setSelectedTournament] = useState<any>(null);
-  const [registeredTournamentIds, setRegisteredTournamentIds] = useState<string[]>([]);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Handler for manual data refresh
-  const handleRefresh = () => {
-    setIsLoading(true);
-    // Simulate API fetch delay
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Data Refreshed",
-        description: "Tournament data has been updated",
-      });
-    }, 1000);
-  };
+  useEffect(() => {
+    const fetchTournaments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tournaments')
+          .select('*')
+          .order('start_date', { ascending: true });
+        
+        if (error) {
+          console.error('Error fetching tournaments:', error);
+          return;
+        }
+        
+        setTournaments(data || []);
+        setFilteredTournaments(data || []);
+      } catch (error) {
+        console.error('Error fetching tournaments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Filter tournaments based on selections
-  let filteredTournaments = availableTournaments.filter((tournament) => {
-    // For Tournaments page, we only show Live and Upcoming
-    if (["live", "upcoming"].indexOf(tournament.status) === -1) return false;
-    if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
-    if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
-    if (gameTypeFilter !== "all" && tournament.gameType !== gameTypeFilter) return false;
+    fetchTournaments();
+  }, []);
+
+  useEffect(() => {
+    // Apply filters
+    let result = tournaments;
     
-    // Date filter (simplified for example purposes)
-    if (dateFilter) {
-      // Implement date filtering logic here
-      // For demo purposes, we'll just return true
-      return true;
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        tournament => 
+          tournament.name.toLowerCase().includes(query) || 
+          tournament.game.toLowerCase().includes(query)
+      );
     }
     
-    return true;
-  });
+    // Game filter
+    if (gameFilter !== "all") {
+      result = result.filter(tournament => tournament.game === gameFilter);
+    }
+    
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter(tournament => tournament.status === statusFilter);
+    }
+    
+    setFilteredTournaments(result);
+  }, [searchQuery, gameFilter, statusFilter, tournaments]);
 
-  // Sort tournaments
-  filteredTournaments = filteredTournaments.sort((a, b) => {
-    if (sortBy === "newest") {
-      return a.isNew ? -1 : b.isNew ? 1 : 0;
-    } else {
-      // Sort by status (live first, then upcoming)
-      return a.status === "live" ? -1 : b.status === "live" ? 1 : 0;
-    }
-  });
+  // Get unique games for the filter
+  const uniqueGames = Array.from(new Set(tournaments.map(t => t.game)));
 
-  const handleJoinTournament = (tournament: (typeof availableTournaments)[0]) => {
-    // For registered tournaments, don't allow re-registration
-    if (registeredTournamentIds.includes(tournament.id)) {
-      toast({
-        title: "Already Registered",
-        description: `You are already registered for ${tournament.title}`,
-      });
-      return;
-    }
-    
-    // Open team selection modal
-    setSelectedTournament(tournament);
-  };
-  
-  const handleRegister = (tournamentId: string, teamId: string | null) => {
-    // Close the modal
-    setSelectedTournament(null);
-    
-    // Add to registered tournaments
-    setRegisteredTournamentIds([...registeredTournamentIds, tournamentId]);
-    
-    const tournament = availableTournaments.find(t => t.id === tournamentId);
-    if (!tournament) return;
-    
-    if (tournament.gameType === "Solo") {
-      toast({
-        title: "Registered Successfully",
-        description: `You have registered for ${tournament.title}`,
-      });
-      return;
-    }
-    
-    const team = myTeams.find(t => t.id === teamId);
-    if (!team) return;
-    
-    toast({
-      title: "Registered Successfully",
-      description: `Team ${team.name} has been registered for ${tournament.title}`,
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric'
     });
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "upcoming":
+        return "bg-blue-500/20 text-blue-400 border-none";
+      case "live":
+        return "bg-green-500/20 text-green-400 border-none";
+      case "completed":
+        return "bg-gray-500/20 text-gray-400 border-none";
+      case "cancelled":
+        return "bg-red-500/20 text-red-400 border-none";
+      default:
+        return "bg-gray-500/20 text-gray-400 border-none";
+    }
+  };
+
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Tournaments</h1>
-            <p className="text-gray-400">Browse all available tournaments</p>
+    <div className="flex h-screen bg-esports-darker overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar className="hidden md:block" />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopBar />
+        
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Tournaments</h1>
+              <p className="text-gray-400">Browse and join upcoming tournaments</p>
+            </div>
+            
+            <Button
+              className="bg-esports-accent hover:bg-esports-accent/80 text-white mt-4 md:mt-0"
+              onClick={() => navigate('/request-admin')}
+            >
+              Request to Host Tournament
+            </Button>
           </div>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-gray-300 bg-esports-dark border-esports-accent/30 flex items-center gap-2"
-            onClick={handleRefresh}
-          >
-            <RefreshIcon className="h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
-
-        {/* Team Selection Modal */}
-        {selectedTournament && (
-          <TeamSelectionModal 
-            tournament={selectedTournament} 
-            teams={myTeams}
-            onClose={() => setSelectedTournament(null)}
-            onRegister={handleRegister}
-          />
-        )}
-
-        {/* Filters and Sort in one line */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <TournamentFilters 
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            gameFilter={gameFilter}
-            setGameFilter={setGameFilter}
-            gameTypeFilter={gameTypeFilter}
-            setGameTypeFilter={setGameTypeFilter}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            showCompletedFilter={false}
-          />
+          {/* Filters */}
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+                  <Input
+                    placeholder="Search tournaments..."
+                    className="bg-esports-dark border-esports-accent/20 text-white pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex md:hidden">
+                <Button
+                  variant="outline"
+                  className="w-full border-esports-accent/20 text-white flex items-center justify-between"
+                  onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+                >
+                  <div className="flex items-center">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <span>Filter</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className={cn(
+                "md:flex gap-4",
+                isMobileFilterOpen ? "flex flex-col" : "hidden"
+              )}>
+                <Select value={gameFilter} onValueChange={setGameFilter}>
+                  <SelectTrigger className="w-full md:w-[180px] bg-esports-dark border-esports-accent/20 text-white">
+                    <SelectValue placeholder="Game" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                    <SelectItem value="all">All Games</SelectItem>
+                    {uniqueGames.map(game => (
+                      <SelectItem key={game} value={game}>{game}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-[180px] bg-esports-dark border-esports-accent/20 text-white">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40 bg-esports-dark border-esports-accent/30 text-gray-300">
-              <SelectValue placeholder="Sort By" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-esports-accent/30">
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="status">By Status</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Tournament Cards */}
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : filteredTournaments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredTournaments.map((tournament) => (
-              <TournamentCard
-                key={tournament.id}
-                id={tournament.id}
-                title={tournament.title}
-                game={tournament.game}
-                gameType={tournament.gameType}
-                date={tournament.date}
-                entryFee={tournament.entryFee}
-                prizePool={tournament.prizePool}
-                participants={tournament.participants}
-                status={tournament.status}
-                isRegistered={registeredTournamentIds.includes(tournament.id)}
-                onJoin={() => handleJoinTournament(tournament)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10">
-            <p className="text-gray-400">No tournaments match your filters.</p>
-          </div>
-        )}
+          {/* Tournaments List */}
+          {loading ? (
+            <div className="text-center py-20">
+              <p className="text-gray-400">Loading tournaments...</p>
+            </div>
+          ) : filteredTournaments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredTournaments.map((tournament) => (
+                <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20 hover:border-esports-accent/50 transition-colors overflow-hidden">
+                  <div className="h-3 bg-esports-accent" />
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant="outline" className={getStatusBadgeClass(tournament.status)}>
+                        {tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}
+                      </Badge>
+                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+                        {tournament.game}
+                      </Badge>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold font-rajdhani mb-3 text-white">
+                      {tournament.name}
+                    </h3>
+                    
+                    <div className="space-y-2.5 mb-4">
+                      <div className="flex items-center text-gray-400">
+                        <Calendar className="h-4 w-4 mr-2 text-esports-accent" />
+                        <span>{formatDate(tournament.start_date)}</span>
+                      </div>
+                      
+                      <div className="flex items-center text-gray-400">
+                        <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
+                        <span>Prize: {tournament.prize_pool} rdCoins</span>
+                      </div>
+                      
+                      <div className="flex items-center text-gray-400">
+                        <Users className="h-4 w-4 mr-2 text-esports-accent" />
+                        <span>Teams: {tournament.max_teams}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-esports-accent/10 flex items-center justify-between">
+                      <div className="text-xl font-bold text-esports-accent">
+                        {tournament.entry_fee > 0 ? `${tournament.entry_fee} rdCoins` : 'Free Entry'}
+                      </div>
+                      <Button 
+                        className="bg-esports-accent hover:bg-esports-accent/80 text-white rounded-full"
+                        size="sm"
+                      >
+                        <span className="mr-1">Details</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <p className="text-gray-400">No tournaments found matching your filters</p>
+            </div>
+          )}
+        </main>
       </div>
-    </DashboardLayout>
-  );
-};
-
-// Simple refresh icon component to avoid importing from lucide-react
-const RefreshIcon = ({ className }: { className?: string }) => {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M21 2v6h-6"></path>
-      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-      <path d="M3 22v-6h6"></path>
-      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-    </svg>
+    </div>
   );
 };
 

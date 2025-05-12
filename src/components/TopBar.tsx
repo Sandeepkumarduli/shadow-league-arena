@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bell, RefreshCcw, User, Coins, Plus, LogOut, ShieldCheck } from "lucide-react";
+import { Bell, RefreshCcw, User, Coins, Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -22,11 +22,11 @@ interface TopBarProps {
 
 const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, isAdmin: userIsAdmin } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   // Check if any live tournaments are available - this would come from context or API in a real app
-  const hasLiveTournaments = true; // Replace with actual logic in production
-  const rdCoins = 500; // This would come from context or API in a real app
+  const hasLiveTournaments = false; 
+  const rdCoins = 0; // This would come from context or API in a real app
 
   const handleProfileClick = () => {
     navigate(isAdmin ? "/admin/settings" : "/profile");
@@ -49,14 +49,6 @@ const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
   const handleLogout = () => {
     logout();
     navigate("/");
-  };
-
-  const handleAdminDashboard = () => {
-    navigate("/admin");
-  };
-
-  const handleUserDashboard = () => {
-    navigate("/dashboard");
   };
 
   return (
@@ -109,7 +101,6 @@ const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
           >
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-esports-accent rounded-full"></span>
           </Button>
           
           {isNotificationOpen && (
@@ -117,26 +108,29 @@ const TopBar = ({ onRefresh, isAdmin = false }: TopBarProps) => {
           )}
         </div>
         
-        {/* Switch between admin/user dashboard */}
-        {isAdmin ? (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
-            title="Switch to User Dashboard"
-            onClick={handleUserDashboard}
-          >
-            <User className="h-5 w-5" />
-          </Button>
-        ) : (
+        {/* Admin dashboard link - only shown if user is admin */}
+        {userIsAdmin && !isAdmin && (
           <Button 
             variant="ghost" 
             size="icon" 
             className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
             title="Switch to Admin Dashboard"
-            onClick={handleAdminDashboard}
+            onClick={() => navigate("/admin")}
           >
-            <ShieldCheck className="h-5 w-5" />
+            <User className="h-5 w-5" />
+          </Button>
+        )}
+        
+        {/* User dashboard link - only shown in admin view */}
+        {isAdmin && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
+            title="Switch to User Dashboard"
+            onClick={() => navigate("/dashboard")}
+          >
+            <User className="h-5 w-5" />
           </Button>
         )}
         

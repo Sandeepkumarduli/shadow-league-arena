@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (emailOrUsername: string, password: string) => Promise<boolean>;
   signup: (username: string, email: string, phone: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -32,25 +33,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Check if the given input is an email
   const isEmail = (input: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
 
+  // Function to check if user is admin
+  const checkAdminStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error("Error checking admin status:", error);
+        return false;
+      }
+      
+      return data?.is_admin || false;
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      async (_event, newSession) => {
         console.log("Auth state changed, new session:", !!newSession);
         setSession(newSession);
         setUser(newSession?.user || null);
+        
+        if (newSession?.user) {
+          const adminStatus = await checkAdminStatus(newSession.user.id);
+          setIsAdmin(adminStatus);
+        } else {
+          setIsAdmin(false);
+        }
       }
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       console.log("Initial auth check, session:", !!currentSession);
       setSession(currentSession);
       setUser(currentSession?.user || null);
+      
+      if (currentSession?.user) {
+        const adminStatus = await checkAdminStatus(currentSession.user.id);
+        setIsAdmin(adminStatus);
+      }
+      
       setIsLoading(false);
     });
 
@@ -106,6 +142,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       console.log("Login successful, user:", !!data.user);
+      
+      // Check admin status after successful login
+      if (data.user) {
+        const adminStatus = await checkAdminStatus(data.user.id);
+        setIsAdmin(adminStatus);
+      }
+      
       return true;
     } catch (error) {
       console.error("Login error:", error);
@@ -159,6 +202,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       console.log("Signup successful, user:", !!data.user);
+      
+      // New users are not admins by default
+      setIsAdmin(false);
+      
       return true;
     } catch (error) {
       console.error("Signup error:", error);
@@ -173,6 +220,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      setIsAdmin(false); // Reset admin status on logout
     } catch (error) {
       console.error("Logout error:", error);
       throw error;
@@ -203,6 +251,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     isLoading,
+    isAdmin,
     login,
     signup,
     logout,

@@ -74,6 +74,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Admin route component that only allows admin users
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Auth redirect for the homepage
 const HomeRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -106,20 +122,20 @@ const AppRoutes = () => (
       <Route path="/request-admin" element={<ProtectedRoute><RequestAdmin /></ProtectedRoute>} />
       <Route path="/news" element={<ProtectedRoute><News /></ProtectedRoute>} />
       
-      {/* Admin routes - these will be protected with proper role check in a real app */}
-      <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/create-tournament" element={<ProtectedRoute><CreateTournament /></ProtectedRoute>} />
-      <Route path="/admin/tournaments" element={<ProtectedRoute><AdminTournaments /></ProtectedRoute>} />
-      <Route path="/admin/teams" element={<ProtectedRoute><AdminTeams /></ProtectedRoute>} />
-      <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-      <Route path="/admin/broadcast" element={<ProtectedRoute><AdminBroadcast /></ProtectedRoute>} />
-      <Route path="/admin/news" element={<ProtectedRoute><AdminNews /></ProtectedRoute>} />
-      <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-      <Route path="/admin/coins" element={<ProtectedRoute><AdminCoins /></ProtectedRoute>} />
-      <Route path="/admin/requests" element={<ProtectedRoute><AdminRequests /></ProtectedRoute>} />
-      <Route path="/admin/update-winners" element={<ProtectedRoute><UpdateWinners /></ProtectedRoute>} />
-      <Route path="/admin/activity" element={<ProtectedRoute><ActivityLog /></ProtectedRoute>} />
-      <Route path="/admin/big-tournaments" element={<ProtectedRoute><BigTournaments /></ProtectedRoute>} />
+      {/* Admin routes - protected by AdminRoute component */}
+      <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/admin/create-tournament" element={<AdminRoute><CreateTournament /></AdminRoute>} />
+      <Route path="/admin/tournaments" element={<AdminRoute><AdminTournaments /></AdminRoute>} />
+      <Route path="/admin/teams" element={<AdminRoute><AdminTeams /></AdminRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+      <Route path="/admin/broadcast" element={<AdminRoute><AdminBroadcast /></AdminRoute>} />
+      <Route path="/admin/news" element={<AdminRoute><AdminNews /></AdminRoute>} />
+      <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+      <Route path="/admin/coins" element={<AdminRoute><AdminCoins /></AdminRoute>} />
+      <Route path="/admin/requests" element={<AdminRoute><AdminRequests /></AdminRoute>} />
+      <Route path="/admin/update-winners" element={<AdminRoute><UpdateWinners /></AdminRoute>} />
+      <Route path="/admin/activity" element={<AdminRoute><ActivityLog /></AdminRoute>} />
+      <Route path="/admin/big-tournaments" element={<AdminRoute><BigTournaments /></AdminRoute>} />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />

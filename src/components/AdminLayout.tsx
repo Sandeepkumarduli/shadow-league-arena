@@ -1,9 +1,11 @@
 
 import { ReactNode, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import TopBar from "./TopBar";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -11,6 +13,12 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isAdmin } = useAuth();
+
+  // Redirect non-admin users to the dashboard
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" />;
+  }
 
   return (
     <div className="flex h-screen bg-esports-darker">

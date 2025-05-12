@@ -7,65 +7,68 @@ import {
   User,
   Wallet,
   Coins,
-  ShieldCheck,
   Newspaper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-const menuItems = [
-  {
-    title: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/dashboard",
-  },
-  {
-    title: "Tournaments",
-    icon: Trophy,
-    href: "/tournaments",
-  },
-  {
-    title: "Registered Tournaments",
-    icon: List,
-    href: "/registered-tournaments",
-  },
-  {
-    title: "My Teams",
-    icon: Users,
-    href: "/my-teams",
-  },
-  {
-    title: "News",
-    icon: Newspaper,
-    href: "/news",
-  },
-  {
-    title: "Profile",
-    icon: User,
-    href: "/profile",
-  },
-  {
-    title: "My Account",
-    icon: Wallet,
-    href: "/my-account",
-  },
-  {
-    title: "Earnings",
-    icon: Coins,
-    href: "/earnings",
-  },
-  {
-    title: "Request as Admin",
-    icon: ShieldCheck,
-    href: "/request-admin",
-  },
-];
+const Sidebar = ({ className }: { className?: string }) => {
+  const { isAdmin } = useAuth();
+  
+  // Define menu items
+  const menuItems = [
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/dashboard",
+    },
+    {
+      title: "Tournaments",
+      icon: Trophy,
+      href: "/tournaments",
+    },
+    {
+      title: "Registered Tournaments",
+      icon: List,
+      href: "/registered-tournaments",
+    },
+    {
+      title: "My Teams",
+      icon: Users,
+      href: "/my-teams",
+    },
+    {
+      title: "News",
+      icon: Newspaper,
+      href: "/news",
+    },
+    {
+      title: "Profile",
+      icon: User,
+      href: "/profile",
+    },
+    {
+      title: "My Account",
+      icon: Wallet,
+      href: "/my-account",
+    },
+    {
+      title: "Earnings",
+      icon: Coins,
+      href: "/earnings",
+    },
+  ];
 
-interface SidebarProps {
-  className?: string;
-}
+  // Only add the Request Admin link if user isn't already an admin
+  if (!isAdmin) {
+    menuItems.push({
+      title: "Request as Admin",
+      icon: Users,
+      href: "/request-admin",
+    });
+  }
 
-const Sidebar = ({ className }: SidebarProps) => {
   return (
     <div className={cn("w-64 h-full bg-esports-dark border-r border-[#1977d4]/20", className)}>
       {/* Logo */}
@@ -95,9 +98,9 @@ const Sidebar = ({ className }: SidebarProps) => {
               <item.icon className="h-5 w-5" />
               <span>{item.title}</span>
               
-              {item.title === "Request as Admin" && (
+              {item.title === "Request as Admin" && !isAdmin && (
                 <span className="absolute right-2 text-xs px-1.5 py-0.5 rounded bg-[#1977d4]/20 text-[#1977d4]">
-                  Coming Soon
+                  Request
                 </span>
               )}
             </NavLink>
