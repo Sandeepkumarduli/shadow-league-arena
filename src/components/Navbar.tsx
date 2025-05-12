@@ -1,7 +1,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trophy, Menu, X } from "lucide-react";
+import { Trophy, Menu, X, User } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,18 +12,18 @@ const Navbar = () => {
       <div className="container mx-auto px-4 md:px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <Trophy className="h-6 w-6 text-esports-accent" />
             <span className="text-xl font-bold font-rajdhani text-white tracking-wider">
               NEXUS<span className="text-esports-accent">ARENA</span>
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-white hover:text-esports-accent transition-colors">
+            <Link to="/tournaments" className="text-white hover:text-esports-accent transition-colors">
               Tournaments
-            </a>
+            </Link>
             <a href="#" className="text-white hover:text-esports-accent transition-colors">
               Games
             </a>
@@ -36,9 +37,12 @@ const Navbar = () => {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-esports-accent">
-              Sign In
-            </Button>
+            <Link to="/dashboard">
+              <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-esports-accent">
+                <User className="h-4 w-4 mr-2" />
+                Dashboard
+              </Button>
+            </Link>
             <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white clip-path-angle px-6">
               Sign Up
             </Button>
@@ -57,9 +61,9 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 bg-esports-dark mt-4 rounded-lg border border-esports-accent/20 animate-fade-in">
             <div className="flex flex-col gap-4 px-4">
-              <a href="#" className="text-white hover:text-esports-accent py-2 transition-colors">
+              <Link to="/tournaments" className="text-white hover:text-esports-accent py-2 transition-colors">
                 Tournaments
-              </a>
+              </Link>
               <a href="#" className="text-white hover:text-esports-accent py-2 transition-colors">
                 Games
               </a>
@@ -70,9 +74,12 @@ const Navbar = () => {
                 How It Works
               </a>
               <div className="flex flex-col gap-2 pt-2 border-t border-esports-accent/20">
-                <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-esports-accent">
-                  Sign In
-                </Button>
+                <Link to="/dashboard">
+                  <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-esports-accent w-full">
+                    <User className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
                 <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white w-full">
                   Sign Up
                 </Button>

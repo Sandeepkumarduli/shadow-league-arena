@@ -1,5 +1,5 @@
 
-import { CalendarCheck, Users, Trophy, Star } from "lucide-react";
+import { CalendarCheck, Users, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -7,7 +7,7 @@ interface TournamentCardProps {
   id: string;
   title: string;
   game: string;
-  gameImage: string;
+  gameImage?: string;
   date: string;
   entryFee: string;
   prizePool: string;
@@ -22,7 +22,6 @@ const TournamentCard = ({
   id,
   title,
   game,
-  gameImage,
   date,
   entryFee,
   prizePool,
@@ -36,35 +35,21 @@ const TournamentCard = ({
   };
 
   return (
-    <div className="esports-card group">
-      {/* Card Header with Game Image */}
-      <div className="relative h-40 overflow-hidden">
-        <img
-          src={gameImage}
-          alt={game}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-esports-card via-esports-card/60 to-transparent"></div>
-        
-        {/* Status Badge */}
-        <div className="absolute top-4 right-4">
+    <div className="esports-card p-5 flex flex-col justify-between h-full">
+      <div>
+        {/* Header with title and badges */}
+        <div className="flex justify-between items-start mb-4">
+          <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+            {game}
+          </Badge>
+          
           <Badge variant="outline" className={`${statusColors[status]} border-none`}>
             {status === "live" && <span className="mr-1.5 w-2 h-2 bg-esports-green rounded-full inline-block animate-pulse"></span>}
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </Badge>
         </div>
         
-        {/* Game Badge */}
-        <div className="absolute bottom-4 left-4">
-          <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-            {game}
-          </Badge>
-        </div>
-      </div>
-      
-      {/* Card Content */}
-      <div className="p-5">
-        <h3 className="text-xl font-bold font-rajdhani mb-3 group-hover:text-esports-accent transition-colors line-clamp-2">
+        <h3 className="text-xl font-bold font-rajdhani mb-4 group-hover:text-esports-accent transition-colors line-clamp-2">
           {title}
         </h3>
         
@@ -85,21 +70,21 @@ const TournamentCard = ({
             <span>Prize pool: {prizePool}</span>
           </div>
         </div>
-        
-        {/* Card Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-esports-accent/20">
-          <div className="text-sm">
-            <span className="text-gray-400">Entry:</span>{" "}
-            <span className="font-semibold text-white">{entryFee}</span>
-          </div>
-          
-          <Button 
-            size="sm" 
-            className="bg-esports-accent hover:bg-esports-accent-hover text-white"
-          >
-            {status === "live" ? "Join Now" : status === "upcoming" ? "Register" : "View Results"}
-          </Button>
+      </div>
+      
+      {/* Card Footer */}
+      <div className="flex items-center justify-between pt-4 border-t border-esports-accent/20">
+        <div className="text-sm">
+          <span className="text-gray-400">Entry:</span>{" "}
+          <span className="font-semibold text-white">{entryFee}</span>
         </div>
+        
+        <Button 
+          size="sm" 
+          className="bg-esports-accent hover:bg-esports-accent-hover text-white"
+        >
+          {status === "live" ? "Join Now" : status === "upcoming" ? "Register" : "View Results"}
+        </Button>
       </div>
     </div>
   );
