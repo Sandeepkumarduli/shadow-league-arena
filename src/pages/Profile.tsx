@@ -89,19 +89,29 @@ const Profile = () => {
           return;
         }
         
+        if (!data) {
+          console.error('No user data found');
+          toast({
+            title: "Error",
+            description: "User data not found.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         // Ensure we have valid data
-        const userData: UserData = {
-          username: data?.username || "",
-          email: data?.email || "",
-          phone: data?.phone || "",
-          bgmiId: data?.bgmiId || "",
+        const userDataObj: UserData = {
+          username: data.username || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          bgmiId: data.bgmiId || "",
         };
         
-        setUserData(userData);
+        setUserData(userDataObj);
         
         // Update form with fetched data
-        form.setValue("phoneNumber", userData.phone);
-        form.setValue("bgmiId", userData.bgmiId || "");
+        form.setValue("phoneNumber", userDataObj.phone);
+        form.setValue("bgmiId", userDataObj.bgmiId || "");
       } catch (error) {
         console.error("Error fetching user data:", error);
         toast({

@@ -69,7 +69,7 @@ const MyAccount = () => {
       // Fetch basic user data
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('username, email, phone, bgmiId')
+        .select('username, email, phone')
         .eq('id', user.id)
         .single();
       
@@ -84,8 +84,19 @@ const MyAccount = () => {
         return;
       }
 
+      if (!userData) {
+        console.error('No user data found');
+        toast({
+          title: "Error",
+          description: "User data not found.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Get stored user preferences (in a real app, these would come from user_profiles)
-      const storedName = localStorage.getItem(`user_${user.id}_name`) || userData?.username || "";
+      const storedName = localStorage.getItem(`user_${user.id}_name`) || userData.username || "";
       const storedGames = localStorage.getItem(`user_${user.id}_games`);
       const games = storedGames ? JSON.parse(storedGames) : ["BGMI"];
       
@@ -136,7 +147,7 @@ const MyAccount = () => {
         }
       }
       
-      // Fetch tournament wins - using the tournament_results table we created
+      // Fetch tournament wins - using the tournament_results table 
       let winsData = [];
       if (teams.length > 0) {
         const teamIds = teams.map(t => t.id);
@@ -156,9 +167,9 @@ const MyAccount = () => {
       // Update user data and stats
       setUserData({
         name: storedName,
-        username: userData?.username || "",
-        email: userData?.email || "",
-        phone: userData?.phone || "",
+        username: userData.username || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
         profileImage: "",
         interestGames: games
       });
