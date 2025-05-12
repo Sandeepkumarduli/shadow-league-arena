@@ -14,7 +14,7 @@
     --popover: 234 26% 14%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 263 100% 61%;
+    --primary: 210 80% 46%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 17% 14%;
@@ -23,7 +23,7 @@
     --muted: 236 22% 15%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 263 100% 61%;
+    --accent: 210 80% 46%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -31,7 +31,7 @@
 
     --border: 240 17% 20%;
     --input: 240 17% 20%;
-    --ring: 263 100% 61%;
+    --ring: 210 80% 46%;
 
     --radius: 0.5rem;
   }
@@ -42,7 +42,7 @@
 
   body {
     @apply bg-esports-darker text-foreground font-poppins;
-    background-image: radial-gradient(rgba(110, 58, 255, 0.03) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(25, 119, 212, 0.03) 1px, transparent 1px);
     background-size: 30px 30px;
   }
 
@@ -55,11 +55,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-esports-accent rounded-full;
+    @apply bg-[#1977d4] rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-esports-accent-hover;
+    @apply bg-[#1977d4]/80;
   }
 }
 
@@ -73,10 +73,10 @@
   }
   
   .glow-text {
-    text-shadow: 0 0 10px rgba(110, 58, 255, 0.5);
+    text-shadow: 0 0 10px rgba(25, 119, 212, 0.5);
   }
 
   .esports-card {
-    @apply bg-esports-card border border-esports-accent/20 rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-esports-accent/20;
+    @apply bg-esports-card border border-[#1977d4]/20 rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-[#1977d4]/20;
   }
 }

@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import MyAccount from "./pages/MyAccount";
 import Earnings from "./pages/Earnings";
 import AddCoins from "./pages/AddCoins";
+import RequestAdmin from "./pages/RequestAdmin";
 import LoadingSpinner from "./components/LoadingSpinner";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,7 @@ const AppRoutes = () => (
       <Route path="/my-account" element={<ProtectedRoute><MyAccount /></ProtectedRoute>} />
       <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
       <Route path="/add-coins" element={<ProtectedRoute><AddCoins /></ProtectedRoute>} />
+      <Route path="/request-admin" element={<ProtectedRoute><RequestAdmin /></ProtectedRoute>} />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bell, RefreshCcw, User, Coins, Plus } from "lucide-react";
+import { Bell, RefreshCcw, User, Coins, Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import NotificationsPanel from "./NotificationsPanel";
 
 interface TopBarProps {
@@ -20,6 +21,7 @@ interface TopBarProps {
 
 const TopBar = ({ onRefresh }: TopBarProps) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   // Check if any live tournaments are available - this would come from context or API in a real app
   const hasLiveTournaments = true; // Replace with actual logic in production
@@ -41,6 +43,11 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
     if (onRefresh) {
       onRefresh();
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
   };
 
   return (
@@ -99,6 +106,17 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
           )}
         </div>
         
+        {/* Logout Button */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-gray-300 hover:text-white hover:bg-esports-accent/10"
+          title="Logout"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-5 w-5" />
+        </Button>
+        
         {/* User profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -120,6 +138,13 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
               onClick={handleAccountClick}
             >
               Account Details
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-gray-300 hover:text-white hover:bg-esports-accent/10 cursor-pointer"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

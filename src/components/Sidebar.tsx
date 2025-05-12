@@ -51,7 +51,7 @@ const menuItems = [
   {
     title: "Request as Admin",
     icon: ShieldCheck,
-    href: "#",
+    href: "/request-admin",
     comingSoon: true,
   },
 ];
@@ -62,13 +62,13 @@ interface SidebarProps {
 
 const Sidebar = ({ className }: SidebarProps) => {
   return (
-    <div className={cn("w-64 h-full bg-esports-dark border-r border-esports-accent/20", className)}>
+    <div className={cn("w-64 h-full bg-esports-dark border-r border-[#1977d4]/20", className)}>
       {/* Logo */}
-      <div className="p-4 border-b border-esports-accent/20">
+      <div className="p-4 border-b border-[#1977d4]/20">
         <NavLink to="/" className="flex items-center gap-2">
-          <Trophy className="h-6 w-6 text-esports-accent" />
+          <Trophy className="h-6 w-6 text-[#1977d4]" />
           <span className="text-xl font-bold font-rajdhani text-white tracking-wider">
-            NEXUS<span className="text-esports-accent">ARENA</span>
+            NEXUS<span className="text-[#1977d4]">ARENA</span>
           </span>
         </NavLink>
       </div>
@@ -83,15 +83,15 @@ const Sidebar = ({ className }: SidebarProps) => {
               className={({ isActive }) => cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors relative",
                 isActive && !item.comingSoon
-                  ? "bg-esports-accent/20 text-esports-accent"
-                  : "text-gray-300 hover:bg-esports-accent/10 hover:text-esports-accent"
+                  ? "bg-[#1977d4]/20 text-[#1977d4]"
+                  : "text-gray-300 hover:bg-[#1977d4]/10 hover:text-[#1977d4]"
               )}
             >
               <item.icon className="h-5 w-5" />
               <span>{item.title}</span>
               
               {item.comingSoon && (
-                <span className="absolute right-2 text-xs px-1.5 py-0.5 rounded bg-esports-accent/20 text-esports-accent">
+                <span className="absolute right-2 text-xs px-1.5 py-0.5 rounded bg-[#1977d4]/20 text-[#1977d4]">
                   Coming Soon
                 </span>
               )}

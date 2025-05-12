@@ -66,8 +66,8 @@ export default {
 				// Custom colors for our esports platform
 				"esports-dark": "#0F1123",
 				"esports-darker": "#090B17",
-				"esports-accent": "#6E3AFF",
-				"esports-accent-hover": "#7D52FF",
+				"esports-accent": "#1977d4", // Updated to new theme color
+				"esports-accent-hover": "#1565b8", // Slightly darker shade for hover
 				"esports-cyan": "#3AFFEF",
 				"esports-green": "#3AFF8F",
 				"esports-red": "#FF3A6E",
@@ -89,8 +89,8 @@ export default {
 					to: { height: '0' }
 				},
 				'pulse-glow': {
-					'0%, 100%': { boxShadow: '0 0 8px 2px rgba(110, 58, 255, 0.2)' },
-					'50%': { boxShadow: '0 0 15px 5px rgba(110, 58, 255, 0.4)' }
+					'0%, 100%': { boxShadow: '0 0 8px 2px rgba(25, 119, 212, 0.2)' },
+					'50%': { boxShadow: '0 0 15px 5px rgba(25, 119, 212, 0.4)' }
 				},
 				'float': {
 					'0%, 100%': { transform: 'translateY(0)' },

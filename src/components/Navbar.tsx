@@ -16,29 +16,29 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-esports-darker/80 backdrop-blur-md border-b border-esports-accent/20">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-esports-darker/80 backdrop-blur-md border-b border-[#1977d4]/20">
       <div className="container mx-auto px-4 md:px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-esports-accent" />
+            <Trophy className="h-6 w-6 text-[#1977d4]" />
             <span className="text-xl font-bold font-rajdhani text-white tracking-wider">
-              NEXUS<span className="text-esports-accent">ARENA</span>
+              NEXUS<span className="text-[#1977d4]">ARENA</span>
             </span>
           </Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
-            <Link to="/tournaments" className="text-white hover:text-esports-accent transition-colors">
+            <Link to="/tournaments" className="text-white hover:text-[#1977d4] transition-colors">
               Tournaments
             </Link>
-            <a href="#" className="text-white hover:text-esports-accent transition-colors">
+            <a href="#" className="text-white hover:text-[#1977d4] transition-colors">
               Games
             </a>
-            <a href="#" className="text-white hover:text-esports-accent transition-colors">
+            <a href="#" className="text-white hover:text-[#1977d4] transition-colors">
               Leaderboards
             </a>
-            <a href="#" className="text-white hover:text-esports-accent transition-colors">
+            <a href="#" className="text-white hover:text-[#1977d4] transition-colors">
               How It Works
             </a>
           </div>
@@ -48,14 +48,14 @@ const Navbar = () => {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-esports-accent">
+                  <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-[#1977d4]">
                     <User className="h-4 w-4 mr-2" />
                     Dashboard
                   </Button>
                 </Link>
                 <Button 
                   variant="outline" 
-                  className="text-white border-esports-accent/30 hover:bg-esports-dark hover:text-esports-accent"
+                  className="text-white border-[#1977d4]/30 hover:bg-esports-dark hover:text-[#1977d4]"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -65,12 +65,12 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-esports-accent">
+                  <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-[#1977d4]">
                     Login
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white clip-path-angle px-6">
+                  <Button className="bg-[#1977d4] hover:bg-[#1977d4]/80 text-white clip-path-angle px-6">
                     Sign Up
                   </Button>
                 </Link>
@@ -89,32 +89,32 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 bg-esports-dark mt-4 rounded-lg border border-esports-accent/20 animate-fade-in">
+          <div className="md:hidden py-4 bg-esports-dark mt-4 rounded-lg border border-[#1977d4]/20 animate-fade-in">
             <div className="flex flex-col gap-4 px-4">
-              <Link to="/tournaments" className="text-white hover:text-esports-accent py-2 transition-colors">
+              <Link to="/tournaments" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 Tournaments
               </Link>
-              <a href="#" className="text-white hover:text-esports-accent py-2 transition-colors">
+              <a href="#" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 Games
               </a>
-              <a href="#" className="text-white hover:text-esports-accent py-2 transition-colors">
+              <a href="#" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 Leaderboards
               </a>
-              <a href="#" className="text-white hover:text-esports-accent py-2 transition-colors">
+              <a href="#" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 How It Works
               </a>
-              <div className="flex flex-col gap-2 pt-2 border-t border-esports-accent/20">
+              <div className="flex flex-col gap-2 pt-2 border-t border-[#1977d4]/20">
                 {isAuthenticated ? (
                   <>
                     <Link to="/dashboard">
-                      <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-esports-accent w-full">
+                      <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-[#1977d4] w-full">
                         <User className="h-4 w-4 mr-2" />
                         Dashboard
                       </Button>
                     </Link>
                     <Button 
                       variant="outline" 
-                      className="text-white justify-start border-esports-accent/30 hover:bg-esports-dark hover:text-esports-accent w-full"
+                      className="text-white justify-start border-[#1977d4]/30 hover:bg-esports-dark hover:text-[#1977d4] w-full"
                       onClick={handleLogout}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -124,12 +124,12 @@ const Navbar = () => {
                 ) : (
                   <>
                     <Link to="/login" className="w-full">
-                      <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-esports-accent w-full">
+                      <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-[#1977d4] w-full">
                         Login
                       </Button>
                     </Link>
                     <Link to="/signup" className="w-full">
-                      <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white w-full">
+                      <Button className="bg-[#1977d4] hover:bg-[#1977d4]/80 text-white w-full">
                         Sign Up
                       </Button>
                     </Link>
