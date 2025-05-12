@@ -1,13 +1,14 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CalendarCheck, ChevronDown, Filter, Gamepad, Trophy, Users } from "lucide-react";
+import TournamentFilters from "@/components/TournamentFilters";
 
 // Sample tournaments data
 const registeredTournaments = [
@@ -15,6 +16,7 @@ const registeredTournaments = [
     id: "1",
     title: "BGMI Pro League Season 5",
     game: "BGMI",
+    gameType: "Squad" as const,
     date: "May 18, 2025 • 8:00 PM",
     entryFee: "Free",
     prizePool: "$3,000",
@@ -27,6 +29,7 @@ const registeredTournaments = [
     id: "2",
     title: "BGMI Weekend Cup",
     game: "BGMI",
+    gameType: "Duo" as const,
     date: "Live Now",
     entryFee: "$5",
     prizePool: "$1,200",
@@ -39,6 +42,7 @@ const registeredTournaments = [
     id: "3",
     title: "Valorant Championship Series",
     game: "Valorant",
+    gameType: "Squad" as const,
     date: "May 15, 2025 • 7:00 PM",
     entryFee: "$10",
     prizePool: "$2,500",
@@ -51,6 +55,7 @@ const registeredTournaments = [
     id: "4",
     title: "COD Mobile Battle Royale",
     game: "COD",
+    gameType: "Solo" as const,
     date: "Completed on May 10",
     entryFee: "$8",
     prizePool: "$1,800",
@@ -82,17 +87,6 @@ const myTeams = [
   },
 ];
 
-// Game options with coming soon status
-const gameOptions = [
-  { value: "all", label: "All Games" },
-  { value: "BGMI", label: "BGMI", available: true },
-  { value: "COD", label: "COD", available: true },
-  { value: "Valorant", label: "Valorant", available: true },
-  { value: "Free Fire", label: "Free Fire", available: false },
-  { value: "Fortnite", label: "Fortnite", available: false },
-  { value: "League of Legends", label: "League of Legends", available: false },
-];
-
 // User stats
 const userStats = {
   registeredTournaments: 20,
@@ -104,7 +98,6 @@ const userStats = {
 const Dashboard = () => {
   const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Filter tournaments based on selections
   const filteredTournaments = registeredTournaments.filter((tournament) => {
@@ -224,108 +217,22 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Registered Tournaments</h2>
-            
-            {/* Filters Button (Mobile) */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="lg:hidden border-esports-accent text-white hover:bg-esports-accent/10"
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="border-esports-accent text-white hover:bg-esports-accent/10"
-                asChild
-              >
-                <Link to="/registered-tournaments">View All</Link>
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              className="border-esports-accent text-white hover:bg-esports-accent/10"
+              asChild
+            >
+              <Link to="/registered-tournaments">View All</Link>
+            </Button>
           </div>
 
-          {/* Filters Row */}
-          <Collapsible
-            open={isFiltersOpen}
-            onOpenChange={setIsFiltersOpen}
-            className="lg:block mb-6"
-          >
-            <div className="hidden lg:flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-esports-accent" />
-                <span className="text-white font-medium">Filters:</span>
-              </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-esports-dark border-esports-accent/30 text-gray-300">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-esports-dark border-esports-accent/30">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="live">Live</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={gameFilter} onValueChange={setGameFilter}>
-                <SelectTrigger className="w-[180px] bg-esports-dark border-esports-accent/30 text-gray-300">
-                  <SelectValue placeholder="Game" />
-                </SelectTrigger>
-                <SelectContent className="bg-esports-dark border-esports-accent/30">
-                  {gameOptions.map((game) => (
-                    <SelectItem key={game.value} value={game.value} disabled={!game.available}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{game.label}</span>
-                        {!game.available && <span className="text-xs text-esports-accent ml-2">(Coming Soon)</span>}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <CollapsibleContent className="lg:hidden space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-sm text-gray-300 mb-1 block">Status</label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full bg-esports-dark border-esports-accent/30 text-gray-300">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-esports-dark border-esports-accent/30">
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm text-gray-300 mb-1 block">Game</label>
-                  <Select value={gameFilter} onValueChange={setGameFilter}>
-                    <SelectTrigger className="w-full bg-esports-dark border-esports-accent/30 text-gray-300">
-                      <SelectValue placeholder="Game" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-esports-dark border-esports-accent/30">
-                      {gameOptions.map((game) => (
-                        <SelectItem key={game.value} value={game.value} disabled={!game.available}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{game.label}</span>
-                            {!game.available && <span className="text-xs text-esports-accent ml-2">(Soon)</span>}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          {/* Filters */}
+          <TournamentFilters 
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            gameFilter={gameFilter}
+            setGameFilter={setGameFilter}
+          />
 
           {/* Tournament Cards */}
           <div className="space-y-4">
@@ -334,13 +241,18 @@ const Dashboard = () => {
                 <div className="p-5">
                   {/* Tournament Header */}
                   <div className="flex justify-between items-start mb-4">
-                    <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                      {tournament.game}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+                        {tournament.game}
+                      </Badge>
+                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+                        {tournament.gameType}
+                      </Badge>
+                    </div>
                     
                     <Badge variant="outline" className={`
                       ${tournament.status === 'live' ? 'bg-esports-green/20 text-esports-green' : 
-                        tournament.status === 'upcoming' ? 'bg-esports-accent/20 text-esports-accent' : 
+                        tournament.status === 'upcoming' ? 'bg-amber-400/20 text-amber-400' : 
                         'bg-gray-500/20 text-gray-400'} 
                       border-none
                     `}>

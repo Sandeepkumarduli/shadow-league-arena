@@ -1,5 +1,5 @@
 
-import { CalendarCheck, Users, Trophy } from "lucide-react";
+import { CalendarCheck, Users, Trophy, Gamepad, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -11,11 +11,17 @@ interface TournamentCardProps {
   date: string;
   entryFee: string;
   prizePool: string;
+  gameType: "Solo" | "Duo" | "Squad";
   participants: {
     current: number;
     max: number;
   };
   status: "upcoming" | "live" | "completed";
+  isRegistered?: boolean;
+  roomId?: string;
+  password?: string;
+  position?: number;
+  onJoin?: () => void;
 }
 
 const TournamentCard = ({
@@ -25,23 +31,42 @@ const TournamentCard = ({
   date,
   entryFee,
   prizePool,
+  gameType,
   participants,
   status,
+  isRegistered = false,
+  roomId = "",
+  password = "",
+  position,
+  onJoin,
 }: TournamentCardProps) => {
   const statusColors = {
-    upcoming: "bg-esports-cyan/20 text-esports-cyan",
+    upcoming: "bg-amber-400/20 text-amber-400",
     live: "bg-esports-green/20 text-esports-green",
     completed: "bg-gray-500/20 text-gray-400",
   };
+
+  const buttonText = isRegistered
+    ? "Registered"
+    : status === "live" 
+      ? "Join Now" 
+      : status === "upcoming" 
+        ? "Register" 
+        : "View Results";
 
   return (
     <div className="esports-card p-5 flex flex-col justify-between h-full">
       <div>
         {/* Header with title and badges */}
         <div className="flex justify-between items-start mb-4">
-          <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-            {game}
-          </Badge>
+          <div className="flex gap-2">
+            <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+              {game}
+            </Badge>
+            <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
+              {gameType}
+            </Badge>
+          </div>
           
           <Badge variant="outline" className={`${statusColors[status]} border-none`}>
             {status === "live" && <span className="mr-1.5 w-2 h-2 bg-esports-green rounded-full inline-block animate-pulse"></span>}
@@ -70,6 +95,34 @@ const TournamentCard = ({
             <span>Prize pool: {prizePool}</span>
           </div>
         </div>
+
+        {/* Room Details (only for live tournaments) */}
+        {status === 'live' && isRegistered && roomId && (
+          <div className="bg-esports-accent/10 p-3 rounded-md mb-5">
+            <div className="text-esports-accent font-medium mb-2">Room Details</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-xs text-gray-400">Room ID</div>
+                <div className="text-white font-mono">{roomId}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">Password</div>
+                <div className="text-white font-mono">{password}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Completed Tournament Result */}
+        {status === 'completed' && position && (
+          <div className="bg-esports-accent/10 p-3 rounded-md mb-5">
+            <div className="text-esports-accent font-medium mb-2">Results</div>
+            <div className="flex items-center">
+              <Gamepad className="h-4 w-4 mr-2 text-esports-accent" />
+              <span className="text-white">Position: #{position}</span>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Card Footer */}
@@ -81,9 +134,15 @@ const TournamentCard = ({
         
         <Button 
           size="sm" 
-          className="bg-esports-accent hover:bg-esports-accent-hover text-white"
+          className={isRegistered 
+            ? "bg-esports-green hover:bg-esports-green/90 text-white flex items-center gap-1.5" 
+            : "bg-esports-accent hover:bg-esports-accent-hover text-white"
+          }
+          onClick={onJoin}
+          disabled={isRegistered || status === "completed"}
         >
-          {status === "live" ? "Join Now" : status === "upcoming" ? "Register" : "View Results"}
+          {isRegistered && <Check className="h-3.5 w-3.5" />}
+          {buttonText}
         </Button>
       </div>
     </div>
