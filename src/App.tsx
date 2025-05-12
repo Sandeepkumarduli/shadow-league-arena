@@ -12,6 +12,9 @@ import Tournaments from "./pages/Tournaments";
 import RegisteredTournaments from "./pages/RegisteredTournaments";
 import MyTeams from "./pages/MyTeams";
 import Profile from "./pages/Profile";
+import MyAccount from "./pages/MyAccount";
+import Earnings from "./pages/Earnings";
+import AddCoins from "./pages/AddCoins";
 import LoadingSpinner from "./components/LoadingSpinner";
 
 const queryClient = new QueryClient();
@@ -53,6 +56,9 @@ const App = () => (
           <Route path="/registered-tournaments" element={<RegisteredTournaments />} />
           <Route path="/my-teams" element={<MyTeams />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/my-account" element={<MyAccount />} />
+          <Route path="/earnings" element={<Earnings />} />
+          <Route path="/add-coins" element={<AddCoins />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

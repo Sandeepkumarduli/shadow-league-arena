@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bell, RefreshCcw, User } from "lucide-react";
+import { Bell, RefreshCcw, User, Coins, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -23,9 +23,18 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   // Check if any live tournaments are available - this would come from context or API in a real app
   const hasLiveTournaments = true; // Replace with actual logic in production
+  const rdCoins = 500; // This would come from context or API in a real app
 
   const handleProfileClick = () => {
     navigate("/profile");
+  };
+
+  const handleAccountClick = () => {
+    navigate("/my-account");
+  };
+
+  const handleAddCoins = () => {
+    navigate("/add-coins");
   };
 
   const handleRefresh = () => {
@@ -40,7 +49,22 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
         <h1 className="text-xl font-semibold text-white">Dashboard</h1>
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        {/* rdCoins display */}
+        <div className="flex items-center bg-esports-dark border border-yellow-500/30 rounded-md px-3 py-1">
+          <Coins className="h-4 w-4 text-yellow-500 mr-2" />
+          <span className="text-yellow-500 font-semibold">{rdCoins}</span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleAddCoins}
+            className="h-5 w-5 ml-2 text-gray-300 hover:text-white hover:bg-yellow-500/20"
+            title="Add rdCoins"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+        
         {/* Active/Offline Status */}
         <Badge variant="outline" className={`${hasLiveTournaments ? 'bg-esports-green/20 text-esports-green' : 'bg-gray-600/20 text-gray-400'} border-none px-3 py-1.5 flex items-center gap-1.5`}>
           {hasLiveTournaments && <span className="w-2 h-2 bg-esports-green rounded-full animate-pulse"></span>}
@@ -90,6 +114,12 @@ const TopBar = ({ onRefresh }: TopBarProps) => {
               onClick={handleProfileClick}
             >
               Profile Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-gray-300 hover:text-white hover:bg-esports-accent/10 cursor-pointer"
+              onClick={handleAccountClick}
+            >
+              Account Details
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

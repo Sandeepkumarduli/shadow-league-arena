@@ -13,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 
@@ -47,6 +48,12 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Mock user data - in a real app, this would come from auth context
+  const userData = {
+    username: "ProGamer123",
+    email: "progamer@example.com",
+  };
 
   // Default values for the form
   const defaultValues: ProfileFormValues = {
@@ -91,11 +98,34 @@ const Profile = () => {
         </div>
 
         <div className="max-w-2xl">
+          {/* Display username and email as view-only fields */}
+          <div className="space-y-4 mb-6">
+            <h3 className="text-lg font-semibold text-white border-b border-esports-accent/20 pb-2">
+              Account Information (View Only)
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">Username</label>
+                <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
+                  {userData.username}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">Email</label>
+                <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
+                  {userData.email}
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white border-b border-esports-accent/20 pb-2">
-                  Account Information
+                  Game Information
                 </h3>
                 
                 <FormField
@@ -173,6 +203,9 @@ const Profile = () => {
                           className="bg-esports-dark border-esports-accent/30 text-white"
                         />
                       </FormControl>
+                      <FormDescription className="text-gray-400 text-xs">
+                        Password must be at least 8 characters.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

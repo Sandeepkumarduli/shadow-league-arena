@@ -3,7 +3,10 @@ import {
   Trophy, 
   LayoutDashboard, 
   List, 
-  Users
+  Users,
+  User,
+  Wallet,
+  Coins
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
@@ -28,6 +31,21 @@ const menuItems = [
     title: "My Teams",
     icon: Users,
     href: "/my-teams",
+  },
+  {
+    title: "Profile",
+    icon: User,
+    href: "/profile",
+  },
+  {
+    title: "My Account",
+    icon: Wallet,
+    href: "/my-account",
+  },
+  {
+    title: "Earnings",
+    icon: Coins,
+    href: "/earnings",
   },
 ];
 
