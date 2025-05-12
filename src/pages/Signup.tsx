@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "@/hooks/use-toast";
 
 const Signup = () => {
-  const { signup, isAuthenticated } = useAuth();
+  const { signup, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -83,8 +84,19 @@ const Signup = () => {
       );
       
       if (success) {
+        toast({
+          title: "Account created",
+          description: "Welcome to NexusArena! You've been signed up successfully.",
+        });
         navigate("/dashboard");
       }
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Signup failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -188,7 +200,7 @@ const Signup = () => {
             <Button 
               type="submit" 
               className="w-full bg-esports-accent hover:bg-esports-accent-hover text-white" 
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
             >
               {isLoading ? "Creating account..." : "Create account"}
             </Button>

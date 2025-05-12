@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
@@ -7,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +29,19 @@ const Login = () => {
     try {
       const success = await login(email, password);
       if (success) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back to NexusArena!",
+        });
         navigate("/dashboard");
       }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid email or password",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +109,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full h-11 bg-[#1977d4] hover:bg-[#1977d4]/80 text-white" 
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 >
                   {isLoading ? "Logging in..." : "Log in"}
                 </Button>
