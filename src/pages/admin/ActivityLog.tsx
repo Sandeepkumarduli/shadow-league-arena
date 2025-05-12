@@ -1,162 +1,124 @@
 
-import { useState } from "react";
+import React from 'react';
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Clock, User, Trophy, Trash, Ban, Coins, PlusCircle } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import AdminLayout from "@/components/AdminLayout";
+import { ArrowLeft, Activity, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InputWithIcon } from "@/components/ui/input-with-icon";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
-// Sample activities data
-const initialActivities = [
+// Sample activity log data
+const activityLogs = [
   {
     id: "1",
-    type: "tournament_created",
-    title: "Tournament Created",
-    description: "BGMI Pro League Season 5 was created",
-    user: "AdminUser",
-    timestamp: "2025-05-12 10:30:22",
-    category: "tournament"
+    type: "tournament",
+    action: "create",
+    details: "Tournament 'BGMI Monthly Cup' was created",
+    user: "Admin",
+    timestamp: "2023-05-12T14:30:00Z",
   },
   {
     id: "2",
-    type: "prize_distributed",
-    title: "Prize Distributed",
-    description: "1,800 rdCoins awarded to Phoenix Rising team for COD Mobile Battle Royale",
-    user: "AdminUser",
-    timestamp: "2025-05-11 14:45:15",
-    category: "prize"
+    type: "user",
+    action: "ban",
+    details: "User 'FireHawk22' was banned for inappropriate behavior",
+    user: "Admin",
+    timestamp: "2023-05-12T15:45:00Z",
   },
   {
     id: "3",
-    type: "user_banned",
-    title: "User Banned",
-    description: "User ShadowNinja was banned for violations",
-    user: "AdminUser",
-    timestamp: "2025-05-10 09:15:30",
-    category: "user"
+    type: "coins",
+    action: "distribute",
+    details: "500 rdCoins distributed to winners of 'BGMI Weekly Cup'",
+    user: "System",
+    timestamp: "2023-05-12T16:20:00Z",
   },
   {
     id: "4",
-    type: "team_banned",
-    title: "Team Banned",
-    description: "Team 'FreeFire Foxes' was banned",
-    user: "AdminUser",
-    timestamp: "2025-05-09 16:22:10",
-    category: "team"
+    type: "tournament",
+    action: "update",
+    details: "Tournament 'Free Fire Weekly' was updated",
+    user: "Admin",
+    timestamp: "2023-05-12T17:15:00Z",
   },
   {
     id: "5",
-    type: "coins_sent",
-    title: "Coins Sent",
-    description: "1,000 rdCoins sent to user FireHawk22",
-    user: "AdminUser",
-    timestamp: "2025-05-08 11:05:45",
-    category: "coin"
-  },
-  {
-    id: "6",
-    type: "tournament_deleted",
-    title: "Tournament Deleted",
-    description: "Free Fire Weekend Cup was deleted",
-    user: "AdminUser",
-    timestamp: "2025-05-07 13:30:00",
-    category: "tournament"
-  },
-  {
-    id: "7",
-    type: "team_created",
-    title: "Team Created",
-    description: "New team 'Esports Legends' was created",
-    user: "AdminUser",
-    timestamp: "2025-05-06 10:15:20",
-    category: "team"
-  },
-  {
-    id: "8",
-    type: "user_created",
-    title: "User Created",
-    description: "New user 'GamingWizard' was created by admin",
-    user: "AdminUser",
-    timestamp: "2025-05-05 09:45:12",
-    category: "user"
+    type: "user",
+    action: "unban",
+    details: "User 'ThunderBolt' was unbanned",
+    user: "Admin",
+    timestamp: "2023-05-12T18:00:00Z",
   }
 ];
 
 const ActivityLog = () => {
   const navigate = useNavigate();
-  const [activities, setActivities] = useState(initialActivities);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("all");
-  
-  // Filter activities based on selections
-  const filteredActivities = activities.filter(activity => {
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [typeFilter, setTypeFilter] = React.useState("all");
+
+  // Filter logs based on search query and type filter
+  const filteredLogs = activityLogs.filter(log => {
     // Apply type filter
-    if (typeFilter !== "all" && activity.type !== typeFilter) return false;
-    
-    // Apply tab filter
-    if (activeTab !== "all" && activity.category !== activeTab) return false;
+    if (typeFilter !== "all" && log.type !== typeFilter) return false;
     
     // Apply search query
-    if (
-      searchQuery && 
-      !activity.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !activity.title.toLowerCase().includes(searchQuery.toLowerCase())
-    ) return false;
+    if (searchQuery && !log.details.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     
     return true;
   });
-  
-  // Get activity icon based on type
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "tournament_created":
-        return <PlusCircle className="h-5 w-5 text-green-400" />;
-      case "tournament_deleted":
-        return <Trash className="h-5 w-5 text-red-400" />;
-      case "prize_distributed":
-        return <Trophy className="h-5 w-5 text-yellow-400" />;
-      case "user_banned":
-      case "team_banned":
-        return <Ban className="h-5 w-5 text-red-400" />;
-      case "coins_sent":
-        return <Coins className="h-5 w-5 text-blue-400" />;
-      case "team_created":
-      case "user_created":
-        return <User className="h-5 w-5 text-green-400" />;
+
+  // Function to format the timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  // Function to get badge color based on action type
+  const getBadgeVariant = (action: string) => {
+    switch (action) {
+      case "create":
+        return "success";
+      case "update":
+        return "outline";
+      case "delete":
+        return "destructive";
+      case "ban":
+        return "destructive";
+      case "unban":
+        return "success";
+      case "distribute":
+        return "warning";
       default:
-        return <Clock className="h-5 w-5 text-gray-400" />;
+        return "secondary";
     }
   };
-  
-  // Get badge color based on type
-  const getActivityBadgeColor = (category: string) => {
-    switch (category) {
-      case "tournament":
-        return "bg-purple-500/20 text-purple-400";
-      case "prize":
-        return "bg-yellow-500/20 text-yellow-400";
-      case "user":
-        return "bg-blue-500/20 text-blue-400";
-      case "team":
-        return "bg-green-500/20 text-green-400";
-      case "coin":
-        return "bg-amber-500/20 text-amber-400";
+
+  // Function to get badge styles based on action type
+  const getBadgeStyles = (action: string) => {
+    switch (action) {
+      case "create":
+        return "bg-green-500/20 text-green-400 border-none";
+      case "update":
+        return "bg-blue-500/20 text-blue-400 border-none";
+      case "delete":
+        return "bg-red-500/20 text-red-400 border-none";
+      case "ban":
+        return "bg-red-500/20 text-red-400 border-none";
+      case "unban":
+        return "bg-green-500/20 text-green-400 border-none";
+      case "distribute":
+        return "bg-yellow-500/20 text-yellow-400 border-none";
       default:
-        return "bg-gray-500/20 text-gray-400";
+        return "bg-gray-500/20 text-gray-400 border-none";
     }
-  };
-  
-  const clearActivityLog = () => {
-    toast({
-      title: "Confirm Clear",
-      description: "This action would clear all activity logs in a real application.",
-    });
   };
 
   return (
@@ -174,32 +136,11 @@ const ActivityLog = () => {
           </Button>
           <h1 className="text-2xl font-bold text-white">Activity Log</h1>
         </div>
-        
-        <Button
-          variant="outline" 
-          size="sm"
-          className="text-red-400 border-red-400/20 hover:bg-red-500/10"
-          onClick={clearActivityLog}
-        >
-          Clear Log
-        </Button>
       </div>
-      
-      {/* Filter Tabs */}
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="bg-esports-darker w-full justify-start overflow-auto">
-          <TabsTrigger value="all" className="data-[state=active]:bg-esports-accent">All Activities</TabsTrigger>
-          <TabsTrigger value="tournament" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-purple-400">Tournaments</TabsTrigger>
-          <TabsTrigger value="prize" className="data-[state=active]:bg-yellow-500/30 data-[state=active]:text-yellow-400">Prizes</TabsTrigger>
-          <TabsTrigger value="user" className="data-[state=active]:bg-blue-500/30 data-[state=active]:text-blue-400">Users</TabsTrigger>
-          <TabsTrigger value="team" className="data-[state=active]:bg-green-500/30 data-[state=active]:text-green-400">Teams</TabsTrigger>
-          <TabsTrigger value="coin" className="data-[state=active]:bg-amber-500/30 data-[state=active]:text-amber-400">Coins</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      
+
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="col-span-1 md:col-span-2">
+        <div className="col-span-2">
           <InputWithIcon
             placeholder="Search activities..."
             value={searchQuery}
@@ -209,58 +150,47 @@ const ActivityLog = () => {
           />
         </div>
         <div>
-          <Select
-            value={typeFilter}
-            onValueChange={setTypeFilter}
-          >
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectValue placeholder="Filter by Type" />
+              <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="tournament_created">Tournament Created</SelectItem>
-              <SelectItem value="tournament_deleted">Tournament Deleted</SelectItem>
-              <SelectItem value="prize_distributed">Prize Distributed</SelectItem>
-              <SelectItem value="user_banned">User Banned</SelectItem>
-              <SelectItem value="team_banned">Team Banned</SelectItem>
-              <SelectItem value="coins_sent">Coins Sent</SelectItem>
-              <SelectItem value="team_created">Team Created</SelectItem>
-              <SelectItem value="user_created">User Created</SelectItem>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="tournament">Tournaments</SelectItem>
+              <SelectItem value="user">Users</SelectItem>
+              <SelectItem value="team">Teams</SelectItem>
+              <SelectItem value="coins">Coins</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
-      
-      {/* Activity List */}
-      <div className="space-y-3">
-        {filteredActivities.length > 0 ? (
-          filteredActivities.map((activity) => (
-            <Card key={activity.id} className="bg-esports-dark border-esports-accent/20">
-              <CardContent className="p-4 flex items-start">
-                <div className="bg-esports-darker p-3 rounded-full mr-4">
-                  {getActivityIcon(activity.type)}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-white">{activity.title}</h3>
-                      <p className="text-sm text-gray-400 mt-1">{activity.description}</p>
+
+      {/* Activity Logs List */}
+      <div className="space-y-4">
+        {filteredLogs.length > 0 ? (
+          filteredLogs.map((log) => (
+            <Card key={log.id} className="bg-esports-dark border-esports-accent/20">
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-esports-accent/20 rounded-full p-3 flex-shrink-0">
+                      <Activity className="h-6 w-6 text-esports-accent" />
                     </div>
                     
-                    <div className="flex items-center gap-2 mt-2 md:mt-0">
-                      <Badge className={getActivityBadgeColor(activity.category)}>
-                        {activity.category.charAt(0).toUpperCase() + activity.category.slice(1)}
-                      </Badge>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className="text-white font-medium">{log.details}</p>
+                        <Badge variant="outline" className={getBadgeStyles(log.action)}>
+                          {log.action.charAt(0).toUpperCase() + log.action.slice(1)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center text-sm text-gray-400">
+                        <span>By {log.user}</span>
+                        <span className="mx-2">•</span>
+                        <span>{formatTimestamp(log.timestamp)}</span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center mt-2 text-xs text-gray-500">
-                    <User className="h-3 w-3 mr-1" />
-                    <span>{activity.user}</span>
-                    <span className="mx-2">•</span>
-                    <Clock className="h-3 w-3 mr-1" />
-                    <span>{activity.timestamp}</span>
                   </div>
                 </div>
               </CardContent>
@@ -268,7 +198,7 @@ const ActivityLog = () => {
           ))
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-400">No activities match your filters.</p>
+            <p className="text-gray-400">No activity logs match your filters.</p>
           </div>
         )}
       </div>

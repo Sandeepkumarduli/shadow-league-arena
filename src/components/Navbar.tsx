@@ -32,9 +32,9 @@ const Navbar = () => {
             <Link to="/tournaments" className="text-white hover:text-[#1977d4] transition-colors">
               Tournaments
             </Link>
-            <a href="#" className="text-white hover:text-[#1977d4] transition-colors">
-              Games
-            </a>
+            <Link to="/news" className="text-white hover:text-[#1977d4] transition-colors">
+              News
+            </Link>
             <a href="#" className="text-white hover:text-[#1977d4] transition-colors">
               Leaderboards
             </a>
@@ -94,9 +94,9 @@ const Navbar = () => {
               <Link to="/tournaments" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 Tournaments
               </Link>
-              <a href="#" className="text-white hover:text-[#1977d4] py-2 transition-colors">
-                Games
-              </a>
+              <Link to="/news" className="text-white hover:text-[#1977d4] py-2 transition-colors">
+                News
+              </Link>
               <a href="#" className="text-white hover:text-[#1977d4] py-2 transition-colors">
                 Leaderboards
               </a>

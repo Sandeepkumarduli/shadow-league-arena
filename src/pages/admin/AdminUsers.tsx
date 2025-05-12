@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins, Plus, Trophy } from "lucide-react";
+import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins, Plus, Trophy, Trash } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,18 @@ const usersData = [
     winCount: 1,
     status: "active",
     rdCoins: 1200
+  },
+  {
+    id: "5",
+    username: "Sandeep",
+    email: "sandeep.wpwb@gmail.com",
+    phone: "+91 12345 67890",
+    registeredOn: "2023-07-01",
+    lastActive: "2023-05-14",
+    tournamentCount: 20,
+    winCount: 8,
+    status: "active",
+    rdCoins: 5000
   }
 ];
 
@@ -80,6 +92,7 @@ const AdminUsers = () => {
   const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSendCoinsOpen, setIsSendCoinsOpen] = useState(false);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   
@@ -120,6 +133,11 @@ const AdminUsers = () => {
     setIsBanDialogOpen(true);
   };
   
+  const handleDeleteUser = (userId: string) => {
+    setUserToView(userId);
+    setIsDeleteDialogOpen(true);
+  };
+  
   const confirmBanUser = () => {
     if (!userToView) return;
     
@@ -143,6 +161,22 @@ const AdminUsers = () => {
     
     setUsers(updatedUsers);
     setIsBanDialogOpen(false);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToView) return;
+    
+    // Filter out the user to delete
+    const updatedUsers = users.filter(user => user.id !== userToView);
+    
+    setUsers(updatedUsers);
+    
+    toast({
+      title: "User Deleted",
+      description: "The user has been permanently deleted.",
+    });
+    
+    setIsDeleteDialogOpen(false);
   };
   
   const handleResetPassword = (userId: string) => {
@@ -355,7 +389,7 @@ const AdminUsers = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center mt-4 lg:mt-0 space-x-2">
+                  <div className="flex flex-wrap items-center mt-4 lg:mt-0 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -396,6 +430,16 @@ const AdminUsers = () => {
                     >
                       {user.status === "banned" ? <Check className="h-4 w-4 mr-2" /> : <Ban className="h-4 w-4 mr-2" />}
                       {user.status === "banned" ? "Unban" : "Ban"}
+                    </Button>
+
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -675,6 +719,37 @@ const AdminUsers = () => {
                   : "bg-red-900 hover:bg-red-800"}
               >
                 {selectedUser.status === "banned" ? "Unban User" : "Ban User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        {selectedUser && (
+          <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
+            <DialogHeader>
+              <DialogTitle className="text-red-500">Delete User</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                This will permanently delete {selectedUser.username} and all associated data. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteUser}
+                className="bg-red-900 hover:bg-red-800"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Permanently Delete
               </Button>
             </DialogFooter>
           </DialogContent>

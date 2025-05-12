@@ -8,6 +8,7 @@ interface User {
   username: string;
   email: string;
   phone: string;
+  isAdmin?: boolean;
 }
 
 // Define auth context type
@@ -35,6 +36,15 @@ export const useAuth = () => useContext(AuthContext);
 const USERS_STORAGE_KEY = 'nexus_arena_users';
 const AUTH_USER_KEY = 'nexus_arena_current_user';
 
+// Initial admin user
+const ADMIN_USER = {
+  id: "admin-001",
+  username: "Sandeep",
+  email: "sandeep.wpwb@gmail.com",
+  phone: "+91 12345 67890",
+  isAdmin: true
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -42,6 +52,14 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  // Initialize the users array with the admin user if it doesn't exist
+  useEffect(() => {
+    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+    if (!storedUsers) {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([ADMIN_USER]));
+    }
+  }, []);
 
   // Load user from local storage on mount
   useEffect(() => {
@@ -63,10 +81,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         return JSON.parse(storedUsers);
       } catch (e) {
-        return [];
+        return [ADMIN_USER];
       }
     }
-    return [];
+    return [ADMIN_USER];
   };
 
   const saveUsers = (users: User[]) => {
@@ -76,6 +94,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Admin special case
+    if (email === ADMIN_USER.email && password === "123456789") {
+      setUser(ADMIN_USER);
+      setIsAuthenticated(true);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(ADMIN_USER));
+      
+      toast({
+        title: "Admin Login successful",
+        description: `Welcome back, ${ADMIN_USER.username}!`,
+      });
+      
+      return true;
+    }
     
     const users = getUsers();
     const validUser = users.find(u => u.email === email);
@@ -145,6 +177,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       username,
       email,
       phone,
+      isAdmin: false,
     };
     
     // Save to "database"
