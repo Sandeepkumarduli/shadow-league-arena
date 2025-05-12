@@ -73,9 +73,10 @@ const Profile = () => {
       if (!user) return;
       
       try {
+        // Note the column name change from bgmiId to bgmiid (lowercase)
         const { data, error } = await supabase
           .from('users')
-          .select('username, email, phone, bgmiId')
+          .select('username, email, phone, bgmiid')
           .eq('id', user.id)
           .single();
         
@@ -99,12 +100,12 @@ const Profile = () => {
           return;
         }
         
-        // Ensure we have valid data
+        // Ensure we have valid data and map bgmiid to bgmiId for consistency in our code
         const userDataObj: UserData = {
           username: data.username || "",
           email: data.email || "",
           phone: data.phone || "",
-          bgmiId: data.bgmiId || "",
+          bgmiId: data.bgmiid || "", // Note the lowercase 'id' here
         };
         
         setUserData(userDataObj);
@@ -143,12 +144,12 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // Update user phone and bgmiId in the database
+      // Update user phone and bgmiId in the database - use lowercase bgmiid for the DB
       const { error: updateError } = await supabase
         .from('users')
         .update({
           phone: data.phoneNumber,
-          bgmiId: data.bgmiId
+          bgmiid: data.bgmiId // Note the lowercase 'id' here
         })
         .eq('id', user?.id);
       
