@@ -129,87 +129,93 @@ const AddCoins = () => {
           <div className="bg-esports-dark rounded-lg border border-esports-accent/20 p-6">
             <h2 className="text-lg font-medium text-white mb-4">Select a Package</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {coinPackages.map((pkg) => (
+            <RadioGroup value={isCustom ? "custom" : selectedPackage} onValueChange={(value) => {
+              if (value === "custom") {
+                handleCustomSelect();
+              } else {
+                handlePackageSelect(value);
+              }
+            }} className="space-y-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {coinPackages.map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    className={`relative cursor-pointer rounded-lg p-4 border-2 transition-all
+                      ${selectedPackage === pkg.id && !isCustom
+                        ? 'border-esports-accent bg-esports-accent/10'
+                        : 'border-esports-accent/20 hover:border-esports-accent/50'
+                      }
+                    `}
+                    onClick={() => handlePackageSelect(pkg.id)}
+                  >
+                    {pkg.popular && (
+                      <div className="absolute -top-3 -right-3 bg-esports-accent px-3 py-1 rounded-full text-xs font-semibold">
+                        Most Popular
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-5 w-5 text-yellow-500" />
+                        <span className="font-bold text-lg text-white">{pkg.coins} rdCoins</span>
+                      </div>
+                      <RadioGroupItem 
+                        id={pkg.id} 
+                        value={pkg.id} 
+                        className="text-esports-accent border-esports-accent/50" 
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">
+                        {pkg.coins > pkg.price && (
+                          <span className="text-green-500">
+                            {Math.round((1 - pkg.price / pkg.coins) * 100)}% off
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-semibold text-white">₹{pkg.price}</span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Custom amount */}
                 <div
-                  key={pkg.id}
-                  className={`relative cursor-pointer rounded-lg p-4 border-2 transition-all
-                    ${selectedPackage === pkg.id && !isCustom
+                  className={`cursor-pointer rounded-lg p-4 border-2 transition-all
+                    ${isCustom
                       ? 'border-esports-accent bg-esports-accent/10'
                       : 'border-esports-accent/20 hover:border-esports-accent/50'
                     }
                   `}
-                  onClick={() => handlePackageSelect(pkg.id)}
+                  onClick={handleCustomSelect}
                 >
-                  {pkg.popular && (
-                    <div className="absolute -top-3 -right-3 bg-esports-accent px-3 py-1 rounded-full text-xs font-semibold">
-                      Most Popular
-                    </div>
-                  )}
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Coins className="h-5 w-5 text-yellow-500" />
-                      <span className="font-bold text-lg text-white">{pkg.coins} rdCoins</span>
+                      <span className="font-bold text-lg text-white">Custom Amount</span>
                     </div>
                     <RadioGroupItem 
-                      id={pkg.id} 
-                      value={pkg.id} 
-                      checked={selectedPackage === pkg.id && !isCustom} 
+                      id="custom" 
+                      value="custom" 
                       className="text-esports-accent border-esports-accent/50" 
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">
-                      {pkg.coins > pkg.price && (
-                        <span className="text-green-500">
-                          {Math.round((1 - pkg.price / pkg.coins) * 100)}% off
-                        </span>
+                  {isCustom && (
+                    <div className="mt-2">
+                      <Input
+                        type="number"
+                        placeholder="Enter amount (min 100)"
+                        value={customAmount}
+                        onChange={(e) => setCustomAmount(e.target.value)}
+                        autoFocus
+                        className="bg-esports-darker border-esports-accent/30 text-white"
+                      />
+                      {parseInt(customAmount) >= 1000 && (
+                        <p className="text-xs text-green-500 mt-1">10% discount on 1000+ coins</p>
                       )}
-                    </span>
-                    <span className="font-semibold text-white">₹{pkg.price}</span>
-                  </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-
-              {/* Custom amount */}
-              <div
-                className={`cursor-pointer rounded-lg p-4 border-2 transition-all
-                  ${isCustom
-                    ? 'border-esports-accent bg-esports-accent/10'
-                    : 'border-esports-accent/20 hover:border-esports-accent/50'
-                  }
-                `}
-                onClick={handleCustomSelect}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Coins className="h-5 w-5 text-yellow-500" />
-                    <span className="font-bold text-lg text-white">Custom Amount</span>
-                  </div>
-                  <RadioGroupItem 
-                    id="custom" 
-                    value="custom" 
-                    checked={isCustom} 
-                    className="text-esports-accent border-esports-accent/50" 
-                  />
-                </div>
-                {isCustom && (
-                  <div className="mt-2">
-                    <Input
-                      type="number"
-                      placeholder="Enter amount (min 100)"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
-                      autoFocus
-                      className="bg-esports-darker border-esports-accent/30 text-white"
-                    />
-                    {parseInt(customAmount) >= 1000 && (
-                      <p className="text-xs text-green-500 mt-1">10% discount on 1000+ coins</p>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
+            </RadioGroup>
             
             {/* Payment summary */}
             <div className="bg-esports-darker rounded-lg p-4 mb-6">
