@@ -1,3 +1,4 @@
+
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import TournamentCard from "@/components/TournamentCard";
@@ -12,6 +13,7 @@ const tournaments = [
     id: "1",
     title: "Valorant Masters Championship",
     game: "Valorant",
+    gameType: "Squad" as const,
     gameImage: "https://images.unsplash.com/photo-1604957570401-1f68b7661371?auto=format&fit=crop&q=80&w=2071&ixlib=rb-4.0.3",
     date: "Jun 15, 2025 • 6:00 PM",
     entryFee: "$15",
@@ -23,6 +25,7 @@ const tournaments = [
     id: "2",
     title: "League of Legends Pro Series - Summer Split",
     game: "League of Legends",
+    gameType: "Squad" as const,
     gameImage: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=2070&ixlib=rb-4.0.3",
     date: "Live Now",
     entryFee: "$20",
@@ -34,6 +37,7 @@ const tournaments = [
     id: "3",
     title: "Call of Duty: Warzone Solo Challenge",
     game: "Call of Duty",
+    gameType: "Solo" as const,
     gameImage: "https://images.unsplash.com/photo-1621075160523-b936ad96132a?auto=format&fit=crop&q=80&w=1470&ixlib=rb-4.0.3",
     date: "Jun 18, 2025 • 7:00 PM",
     entryFee: "Free",
@@ -45,6 +49,7 @@ const tournaments = [
     id: "4",
     title: "Fortnite Weekend Showdown",
     game: "Fortnite",
+    gameType: "Duo" as const,
     gameImage: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&q=80&w=1374&ixlib=rb-4.0.3",
     date: "Jun 20, 2025 • 3:00 PM",
     entryFee: "$10",
