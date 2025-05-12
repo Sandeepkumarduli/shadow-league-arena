@@ -1,10 +1,10 @@
-
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import TournamentCard from "@/components/TournamentCard";
 import FeaturedGames from "@/components/FeaturedGames";
 import HowItWorks from "@/components/HowItWorks";
 import { Button } from "@/components/ui/button";
+import { Trophy } from "lucide-react";
 
 // Sample tournaments data
 const tournaments = [
