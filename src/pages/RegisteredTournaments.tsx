@@ -5,10 +5,11 @@ import TournamentCard from "@/components/TournamentCard";
 import TournamentFilters from "@/components/TournamentFilters";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Award, Coins } from "lucide-react";
+import { Award, Coins, CalendarCheck, Users, Trophy, Gamepad } from "lucide-react";
 
 // Sample tournaments data
 const registeredTournaments = [
