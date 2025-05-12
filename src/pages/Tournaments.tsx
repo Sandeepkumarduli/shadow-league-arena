@@ -17,8 +17,8 @@ const availableTournaments = [
     game: "BGMI",
     gameType: "Squad" as const,
     date: "May 18, 2025 • 8:00 PM",
-    entryFee: "Free",
-    prizePool: "$3,000",
+    entryFee: "500",
+    prizePool: "3,000",
     participants: { current: 64, max: 100 },
     status: "upcoming" as const,
     isNew: true,
@@ -29,8 +29,8 @@ const availableTournaments = [
     game: "BGMI",
     gameType: "Duo" as const,
     date: "Live Now",
-    entryFee: "$5",
-    prizePool: "$1,200",
+    entryFee: "500",
+    prizePool: "1,200",
     participants: { current: 98, max: 100 },
     status: "live" as const,
     isNew: false,
@@ -41,8 +41,8 @@ const availableTournaments = [
     game: "Valorant",
     gameType: "Squad" as const,
     date: "May 15, 2025 • 7:00 PM",
-    entryFee: "$10",
-    prizePool: "$2,500",
+    entryFee: "1000",
+    prizePool: "2,500",
     participants: { current: 32, max: 32 },
     status: "upcoming" as const,
     isNew: false,
@@ -53,8 +53,8 @@ const availableTournaments = [
     game: "COD",
     gameType: "Solo" as const,
     date: "May 20, 2025 • 6:00 PM",
-    entryFee: "$3",
-    prizePool: "$500",
+    entryFee: "300",
+    prizePool: "500",
     participants: { current: 45, max: 100 },
     status: "upcoming" as const,
     isNew: true,
@@ -65,8 +65,8 @@ const availableTournaments = [
     game: "BGMI",
     gameType: "Solo" as const,
     date: "Live Now",
-    entryFee: "$2",
-    prizePool: "$800",
+    entryFee: "200",
+    prizePool: "800",
     participants: { current: 76, max: 100 },
     status: "live" as const,
     isNew: false,
@@ -77,8 +77,8 @@ const availableTournaments = [
     game: "Valorant",
     gameType: "Duo" as const,
     date: "May 25, 2025 • 7:30 PM",
-    entryFee: "$8",
-    prizePool: "$1,500",
+    entryFee: "800",
+    prizePool: "1,500",
     participants: { current: 15, max: 32 },
     status: "upcoming" as const,
     isNew: true,
@@ -94,7 +94,7 @@ const myTeams = [
 
 const Tournaments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [gameFilter, setGameFilter] = useState("all");
+  const [gameFilter, setGameFilter] = useState("BGMI"); // Default to BGMI
   const [gameTypeFilter, setGameTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState("newest");
@@ -214,33 +214,29 @@ const Tournaments = () => {
           />
         )}
 
-        {/* Filters and Sort */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="lg:w-3/4">
-            <TournamentFilters 
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              gameFilter={gameFilter}
-              setGameFilter={setGameFilter}
-              gameTypeFilter={gameTypeFilter}
-              setGameTypeFilter={setGameTypeFilter}
-              dateFilter={dateFilter}
-              setDateFilter={setDateFilter}
-              showCompletedFilter={false}
-            />
-          </div>
+        {/* Filters and Sort in one line */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <TournamentFilters 
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            gameFilter={gameFilter}
+            setGameFilter={setGameFilter}
+            gameTypeFilter={gameTypeFilter}
+            setGameTypeFilter={setGameTypeFilter}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            showCompletedFilter={false}
+          />
           
-          <div className="w-full lg:w-1/4">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full bg-esports-dark border-esports-accent/30 text-gray-300">
-                <SelectValue placeholder="Sort By" />
-              </SelectTrigger>
-              <SelectContent className="bg-esports-dark border-esports-accent/30">
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="status">By Status</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-40 bg-esports-dark border-esports-accent/30 text-gray-300">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent className="bg-esports-dark border-esports-accent/30">
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="status">By Status</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Tournament Cards */}

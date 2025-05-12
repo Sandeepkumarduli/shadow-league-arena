@@ -6,6 +6,9 @@ import TournamentFilters from "@/components/TournamentFilters";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Award, Coins } from "lucide-react";
 
 // Sample tournaments data
 const registeredTournaments = [
@@ -15,8 +18,8 @@ const registeredTournaments = [
     game: "BGMI",
     gameType: "Squad" as const,
     date: "May 18, 2025 • 8:00 PM",
-    entryFee: "Free",
-    prizePool: "$3,000",
+    entryFee: "500",
+    prizePool: "3,000",
     participants: { current: 64, max: 100 },
     status: "upcoming" as const,
     isRegistered: true,
@@ -29,8 +32,8 @@ const registeredTournaments = [
     game: "BGMI",
     gameType: "Duo" as const,
     date: "Live Now",
-    entryFee: "$5",
-    prizePool: "$1,200",
+    entryFee: "500",
+    prizePool: "1,200",
     participants: { current: 98, max: 100 },
     status: "live" as const,
     isRegistered: true,
@@ -43,8 +46,8 @@ const registeredTournaments = [
     game: "Valorant",
     gameType: "Squad" as const,
     date: "May 15, 2025 • 7:00 PM",
-    entryFee: "$10",
-    prizePool: "$2,500",
+    entryFee: "1000",
+    prizePool: "2,500",
     participants: { current: 32, max: 32 },
     status: "upcoming" as const,
     isRegistered: true,
@@ -57,8 +60,8 @@ const registeredTournaments = [
     game: "COD",
     gameType: "Solo" as const,
     date: "Completed on May 10",
-    entryFee: "$8",
-    prizePool: "$1,800",
+    entryFee: "800",
+    prizePool: "1,800",
     participants: { current: 50, max: 50 },
     status: "completed" as const,
     isRegistered: true,
@@ -72,8 +75,8 @@ const registeredTournaments = [
     game: "BGMI",
     gameType: "Solo" as const,
     date: "May 22, 2025 • 9:00 PM",
-    entryFee: "$2",
-    prizePool: "$800",
+    entryFee: "200",
+    prizePool: "800",
     participants: { current: 120, max: 150 },
     status: "upcoming" as const,
     isRegistered: true,
@@ -82,12 +85,35 @@ const registeredTournaments = [
   },
 ];
 
+// Generate more tournaments for pagination example
+const allTournaments = [
+  ...registeredTournaments,
+  ...Array(20).fill(0).map((_, i) => ({
+    id: `extra-${i + 1}`,
+    title: `Tournament ${i + 6}`,
+    game: "BGMI",
+    gameType: ["Solo", "Duo", "Squad"][i % 3] as "Solo" | "Duo" | "Squad",
+    date: `May ${20 + i}, 2025 • ${7 + (i % 12)}:00 PM`,
+    entryFee: `${(i + 2) * 100}`,
+    prizePool: `${(i + 5) * 300}`,
+    participants: { current: 30 + i, max: 100 },
+    status: ["upcoming", "live", "completed"][i % 3] as "upcoming" | "live" | "completed",
+    isRegistered: true,
+    roomId: i % 3 === 1 ? `ROOM${1000 + i}` : "",
+    password: i % 3 === 1 ? `pass${i}` : "",
+    position: i % 3 === 2 ? (i % 10) + 1 : undefined,
+  }))
+];
+
 const RegisteredTournaments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [gameFilter, setGameFilter] = useState("all");
   const [gameTypeFilter, setGameTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [tournamentDetails, setTournamentDetails] = useState<any>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Handler for manual data refresh
   const handleRefresh = () => {
@@ -103,7 +129,7 @@ const RegisteredTournaments = () => {
   };
 
   // Filter tournaments based on selections
-  const filteredTournaments = registeredTournaments.filter((tournament) => {
+  const filteredTournaments = allTournaments.filter((tournament) => {
     if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
     if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
     if (gameTypeFilter !== "all" && tournament.gameType !== gameTypeFilter) return false;
@@ -118,9 +144,17 @@ const RegisteredTournaments = () => {
     return true;
   });
 
+  // Pagination
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredTournaments.length / ITEMS_PER_PAGE);
+  const paginatedTournaments = filteredTournaments.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const handleJoinLive = (tournamentId: string) => {
     // Get the tournament
-    const tournament = registeredTournaments.find(t => t.id === tournamentId);
+    const tournament = allTournaments.find(t => t.id === tournamentId);
     
     if (tournament && tournament.status === "live") {
       if (tournament.roomId && tournament.password) {
@@ -134,6 +168,18 @@ const RegisteredTournaments = () => {
           description: "The admin has not provided room details yet.",
           variant: "destructive",
         });
+      }
+    }
+  };
+
+  const handleShowDetails = (tournamentId: string) => {
+    const tournament = allTournaments.find(t => t.id === tournamentId);
+    
+    if (tournament) {
+      // Only show details for completed or upcoming tournaments
+      if (tournament.status === "completed" || tournament.status === "upcoming") {
+        setTournamentDetails(tournament);
+        setDetailsOpen(true);
       }
     }
   };
@@ -173,9 +219,9 @@ const RegisteredTournaments = () => {
         {/* Tournament Cards */}
         {isLoading ? (
           <LoadingSpinner />
-        ) : filteredTournaments.length > 0 ? (
+        ) : paginatedTournaments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredTournaments.map((tournament) => (
+            {paginatedTournaments.map((tournament) => (
               <TournamentCard
                 key={tournament.id}
                 id={tournament.id}
@@ -192,6 +238,7 @@ const RegisteredTournaments = () => {
                 password={tournament.password}
                 position={tournament.position}
                 onJoin={() => handleJoinLive(tournament.id)}
+                onDetails={() => handleShowDetails(tournament.id)}
               />
             ))}
           </div>
@@ -200,6 +247,179 @@ const RegisteredTournaments = () => {
             <p className="text-gray-400">No tournaments match your filters.</p>
           </div>
         )}
+
+        {/* Pagination */}
+        {filteredTournaments.length > ITEMS_PER_PAGE && (
+          <Pagination className="mt-8">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setCurrentPage(currentPage - 1);
+                  }}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                // Show first, last, and pages around current page
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(pageNum);
+                      }}
+                      isActive={currentPage === pageNum}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                  }}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
+
+        {/* Tournament Details Dialog */}
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogContent className="bg-esports-dark border-esports-accent/30 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-white">
+                {tournamentDetails?.title}
+              </DialogTitle>
+              <DialogDescription className="text-gray-300">
+                {tournamentDetails?.game} • {tournamentDetails?.gameType}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-esports-accent/10 p-4 rounded-md">
+                {tournamentDetails?.status === "completed" ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Award className="h-5 w-5 text-esports-accent mr-2" />
+                        <span className="text-white font-medium">Results</span>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={parseInt(String(tournamentDetails?.position)) <= 3 ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"}
+                      >
+                        Position #{tournamentDetails?.position}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-esports-accent/20">
+                      <div>
+                        <p className="text-sm text-gray-400">Entry Fee</p>
+                        <p className="text-white flex items-center">
+                          <Coins className="h-4 w-4 mr-1 text-yellow-500" />
+                          {tournamentDetails?.entryFee} rdCoins
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Winnings</p>
+                        <p className="text-white flex items-center">
+                          {parseInt(String(tournamentDetails?.position)) <= 3 ? (
+                            <>
+                              <Coins className="h-4 w-4 mr-1 text-yellow-500" />
+                              {parseInt(String(tournamentDetails?.position)) === 1 
+                                ? parseInt(tournamentDetails?.prizePool) * 0.5 
+                                : parseInt(String(tournamentDetails?.position)) === 2
+                                ? parseInt(tournamentDetails?.prizePool) * 0.3
+                                : parseInt(tournamentDetails?.prizePool) * 0.1} rdCoins
+                            </>
+                          ) : (
+                            <span className="text-gray-400">0 rdCoins</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center pt-2">
+                      {parseInt(String(tournamentDetails?.position)) <= 3 ? (
+                        <p className="text-green-400 font-medium">Congratulations on your win!</p>
+                      ) : (
+                        <p className="text-gray-400">Better luck next time!</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <CalendarCheck className="h-5 w-5 text-esports-accent mr-2" />
+                      <span className="text-white font-medium">Match Information</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-esports-accent/20">
+                      <div>
+                        <p className="text-sm text-gray-400">Date & Time</p>
+                        <p className="text-white">{tournamentDetails?.date}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Entry Fee</p>
+                        <p className="text-white flex items-center">
+                          <Coins className="h-4 w-4 mr-1 text-yellow-500" />
+                          {tournamentDetails?.entryFee} rdCoins
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Prize Pool</p>
+                        <p className="text-white flex items-center">
+                          <Coins className="h-4 w-4 mr-1 text-yellow-500" />
+                          {tournamentDetails?.prizePool} rdCoins
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Registration Status</p>
+                        <p className="text-green-400">Confirmed</p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center pt-2">
+                      <p className="text-gray-300">Room details will be shared 15 minutes before the tournament starts.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                onClick={() => setDetailsOpen(false)}
+                className="w-full bg-esports-accent hover:bg-esports-accent-hover"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

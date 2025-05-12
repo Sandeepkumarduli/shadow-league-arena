@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarCheck, ChevronDown, Filter, Gamepad, Trophy, Users } from "lucide-react";
+import { CalendarCheck, ChevronDown, Filter, Gamepad, Trophy, Users, Award, CheckCircle } from "lucide-react";
 import TournamentFilters from "@/components/TournamentFilters";
 
 // Sample tournaments data
@@ -16,8 +17,8 @@ const registeredTournaments = [{
   game: "BGMI",
   gameType: "Squad" as const,
   date: "May 18, 2025 • 8:00 PM",
-  entryFee: "Free",
-  prizePool: "$3,000",
+  entryFee: "500",
+  prizePool: "3,000",
   participants: {
     current: 64,
     max: 100
@@ -31,8 +32,8 @@ const registeredTournaments = [{
   game: "BGMI",
   gameType: "Duo" as const,
   date: "Live Now",
-  entryFee: "$5",
-  prizePool: "$1,200",
+  entryFee: "500",
+  prizePool: "1,200",
   participants: {
     current: 98,
     max: 100
@@ -46,8 +47,8 @@ const registeredTournaments = [{
   game: "Valorant",
   gameType: "Squad" as const,
   date: "May 15, 2025 • 7:00 PM",
-  entryFee: "$10",
-  prizePool: "$2,500",
+  entryFee: "1000",
+  prizePool: "2,500",
   participants: {
     current: 32,
     max: 32
@@ -61,8 +62,8 @@ const registeredTournaments = [{
   game: "COD",
   gameType: "Solo" as const,
   date: "Completed on May 10",
-  entryFee: "$8",
-  prizePool: "$1,800",
+  entryFee: "800",
+  prizePool: "1,800",
   participants: {
     current: 50,
     max: 50
@@ -101,12 +102,15 @@ const Dashboard = () => {
   const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Filter tournaments based on selections
-  const filteredTournaments = registeredTournaments.filter(tournament => {
-    if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
-    if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
-    return true;
-  });
+  // Filter tournaments based on selections and limit to 10 most recent
+  const filteredTournaments = registeredTournaments
+    .filter(tournament => {
+      if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
+      if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
+      return true;
+    })
+    .slice(0, 10); // Limit to 10 tournaments
+    
   return <DashboardLayout>
       <div className="space-y-8">
         {/* User Profile Section */}
@@ -129,7 +133,10 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-esports-dark border-esports-accent/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-lg">Registered</CardTitle>
+              <div className="flex items-center">
+                <CalendarCheck className="h-5 w-5 mr-2 text-esports-accent" />
+                <CardTitle className="text-white text-lg">Registered</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-esports-accent">{userStats.registeredTournaments}</div>
@@ -139,7 +146,10 @@ const Dashboard = () => {
           
           <Card className="bg-esports-dark border-esports-accent/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-lg">Completed</CardTitle>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2 text-esports-accent" />
+                <CardTitle className="text-white text-lg">Completed</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-esports-accent">{userStats.completedTournaments}</div>
@@ -149,7 +159,10 @@ const Dashboard = () => {
           
           <Card className="bg-esports-dark border-esports-accent/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-lg">Total</CardTitle>
+              <div className="flex items-center">
+                <Gamepad className="h-5 w-5 mr-2 text-esports-accent" />
+                <CardTitle className="text-white text-lg">Total</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-esports-accent">{userStats.totalTournaments}</div>
@@ -159,7 +172,10 @@ const Dashboard = () => {
           
           <Card className="bg-esports-dark border-esports-accent/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-lg">Wins</CardTitle>
+              <div className="flex items-center">
+                <Trophy className="h-5 w-5 mr-2 text-esports-accent" />
+                <CardTitle className="text-white text-lg">Wins</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-esports-accent">{userStats.wins}</div>
@@ -257,12 +273,12 @@ const Dashboard = () => {
                       
                       <div className="flex items-center text-sm text-gray-300">
                         <Users className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span className="change participants to slots everywhere ">{tournament.participants.current} / {tournament.participants.max} participants</span>
+                        <span>{tournament.participants.current} / {tournament.participants.max} slots</span>
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-300">
                         <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Prize pool: {tournament.prizePool}</span>
+                        <span>Prize pool: {tournament.prizePool} rdCoins</span>
                       </div>
                     </div>
                     
@@ -285,13 +301,19 @@ const Dashboard = () => {
                     {tournament.status === 'completed' && tournament.position && <div className="bg-esports-accent/10 p-3 rounded-md">
                         <div className="text-esports-accent font-medium mb-2">Results</div>
                         <div className="flex items-center">
-                          <Gamepad className="h-4 w-4 mr-2 text-esports-accent" />
+                          <Award className="h-4 w-4 mr-2 text-esports-accent" />
                           <span className="text-white">Position: #{tournament.position}</span>
                         </div>
                       </div>}
                   </div>
                 </div>
               </Card>)}
+              
+              {filteredTournaments.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No tournaments match your filters.</p>
+                </div>
+              )}
           </div>
         </div>
       </div>

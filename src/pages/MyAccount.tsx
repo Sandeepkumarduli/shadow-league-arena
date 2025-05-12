@@ -1,8 +1,9 @@
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { User, Coins, Users, Trophy, CalendarDays } from "lucide-react";
+import { User, Coins, Users, Trophy, CalendarDays, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -156,9 +157,22 @@ const MyAccount = () => {
 
             {/* Teams Card */}
             <div className="bg-esports-dark rounded-lg border border-esports-accent/20 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="h-5 w-5 text-esports-accent" />
-                <h2 className="text-lg font-medium text-white">My Teams</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-esports-accent" />
+                  <h2 className="text-lg font-medium text-white">My Teams</h2>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  asChild
+                  className="border-esports-accent/20 text-esports-accent hover:bg-esports-accent/10"
+                >
+                  <Link to="/my-teams">
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit Teams
+                  </Link>
+                </Button>
               </div>
               
               <div className="space-y-3">
@@ -214,15 +228,16 @@ const MyAccount = () => {
               <div className="flex gap-3">
                 <Button 
                   onClick={handleAddCoins}
+                  asChild
                   className="flex-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500/30"
                 >
-                  Add Coins
+                  <Link to="/add-coins">Add Coins</Link>
                 </Button>
                 <Button 
-                  onClick={handleRedeem}
+                  asChild
                   className="flex-1 bg-esports-accent hover:bg-esports-accent-hover"
                 >
-                  Redeem
+                  <Link to="/earnings">Redeem</Link>
                 </Button>
               </div>
             </div>

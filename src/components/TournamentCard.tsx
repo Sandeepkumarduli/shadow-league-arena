@@ -1,5 +1,5 @@
 
-import { CalendarCheck, Users, Trophy, Gamepad } from "lucide-react";
+import { CalendarCheck, Users, Trophy, Gamepad, Award, Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,7 @@ interface TournamentCardProps {
   password?: string;
   position?: number;
   onJoin?: () => void;
+  onDetails?: () => void;
 }
 
 const TournamentCard = ({
@@ -39,6 +40,7 @@ const TournamentCard = ({
   password = "",
   position,
   onJoin,
+  onDetails,
 }: TournamentCardProps) => {
   const statusColors = {
     upcoming: "bg-amber-400/20 text-amber-400",
@@ -91,12 +93,12 @@ const TournamentCard = ({
           
           <div className="flex items-center text-sm text-gray-300">
             <Users className="h-4 w-4 mr-2 text-esports-accent" />
-            <span>{participants.current} / {participants.max} participants</span>
+            <span>{participants.current} / {participants.max} slots</span>
           </div>
           
           <div className="flex items-center text-sm text-gray-300">
             <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-            <span>Prize pool: {prizePool}</span>
+            <span>Prize pool: <Coins className="h-3 w-3 inline-block mr-1 text-yellow-500" /> {prizePool} rdCoins</span>
           </div>
         </div>
 
@@ -122,7 +124,7 @@ const TournamentCard = ({
           <div className="bg-esports-accent/10 p-3 rounded-md mb-5">
             <div className="text-esports-accent font-medium mb-2">Results</div>
             <div className="flex items-center">
-              <Gamepad className="h-4 w-4 mr-2 text-esports-accent" />
+              <Award className="h-4 w-4 mr-2 text-esports-accent" />
               <span className="text-white">Position: #{position}</span>
             </div>
           </div>
@@ -133,20 +135,31 @@ const TournamentCard = ({
       <div className="flex items-center justify-between pt-4 border-t border-esports-accent/20">
         <div className="text-sm">
           <span className="text-gray-400">Entry:</span>{" "}
-          <span className="font-semibold text-white">{entryFee}</span>
+          <span className="font-semibold text-white flex items-center">
+            <Coins className="h-3 w-3 mr-1 text-yellow-500" />
+            {entryFee} rdCoins
+          </span>
         </div>
         
-        {(showJoinButton || isRegistered || status === "completed") && (
+        {status === "live" && isRegistered ? (
+          <Button 
+            size="sm"
+            onClick={onJoin}
+            className="bg-esports-accent hover:bg-esports-accent-hover text-white"
+          >
+            Join Now
+          </Button>
+        ) : (status === "upcoming" || status === "completed") && (
           <Button 
             size="sm" 
             className={isRegistered 
               ? "bg-gray-600 hover:bg-gray-700 text-white" // Flat grey for registered
               : "bg-esports-accent hover:bg-esports-accent-hover text-white"
             }
-            onClick={onJoin}
-            disabled={isRegistered || status === "completed" || status === "live"}
+            onClick={isRegistered || status === "completed" ? onDetails : onJoin}
+            disabled={isRegistered && status !== "completed"}
           >
-            {buttonText}
+            {isRegistered && status === "upcoming" ? "Registered" : status === "completed" ? "Details" : "Register"}
           </Button>
         )}
       </div>
