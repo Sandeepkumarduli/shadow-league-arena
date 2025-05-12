@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins, Plus } from "lucide-react";
+import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins, Plus, Trophy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
