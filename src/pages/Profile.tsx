@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,9 +47,17 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+// Define a type for user data from the database
+interface UserData {
+  username: string;
+  email: string;
+  phone: string;
+  bgmiId?: string; // Make bgmiId optional since it might not exist for older users
+}
+
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UserData>({
     username: "",
     email: "",
     phone: "",
@@ -67,7 +74,7 @@ const Profile = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('username, email, phone')
+          .select('username, email, phone, bgmiId')
           .eq('id', user.id)
           .single();
         
@@ -77,7 +84,7 @@ const Profile = () => {
           username: data.username || "",
           email: data.email || "",
           phone: data.phone || "",
-          bgmiId: data.bgmiId || "", // This might be in a user_profiles table in a real implementation
+          bgmiId: data.bgmiId || "", 
         });
         
         // Update form with fetched data
@@ -114,12 +121,12 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // Update user phone in the database
+      // Update user phone and bgmiId in the database
       const { error: updateError } = await supabase
         .from('users')
         .update({
           phone: data.phoneNumber,
-          // In a real implementation, you might update bgmiId in a user_profiles table
+          bgmiId: data.bgmiId
         })
         .eq('id', user?.id);
       

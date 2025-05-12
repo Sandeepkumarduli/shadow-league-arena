@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Bell, 
   Search, 
@@ -35,7 +35,12 @@ const TopBar = ({ isAdmin = false }: TopBarProps) => {
   const { user, logout } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [userStatus, setUserStatus] = useState("Active");
+  const [userStatus, setUserStatus] = useState("Active"); // Set default to Active
+  
+  // Set user as active on component mount
+  useEffect(() => {
+    setUserStatus("Active");
+  }, []);
   
   const toggleNotifications = () => {
     setIsNotificationsOpen(!isNotificationsOpen);
@@ -61,7 +66,6 @@ const TopBar = ({ isAdmin = false }: TopBarProps) => {
     try {
       // Update user status to active
       if (user) {
-        // In a real implementation, you might update a status field in the users table
         setUserStatus("Active");
       }
       
@@ -73,9 +77,6 @@ const TopBar = ({ isAdmin = false }: TopBarProps) => {
         title: "Data Refreshed",
         description: "All data has been refreshed from the database.",
       });
-      
-      // Reload the current page to ensure fresh data
-      window.location.reload();
     } catch (error) {
       console.error("Error refreshing data:", error);
       toast({
@@ -84,7 +85,9 @@ const TopBar = ({ isAdmin = false }: TopBarProps) => {
         variant: "destructive"
       });
     } finally {
-      setIsRefreshing(false);
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 1000);
     }
   };
 

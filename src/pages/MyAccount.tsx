@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -11,6 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface Team {
+  id: string;
+  name: string;
+}
+
 interface UserData {
   name: string;
   username: string;
@@ -21,7 +25,7 @@ interface UserData {
 }
 
 interface UserStats {
-  teams: string[];
+  teams: Team[];
   registeredTournaments: number;
   completedTournaments: number;
   wins: number;
@@ -64,7 +68,7 @@ const MyAccount = () => {
       // Fetch basic user data
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('username, email, phone')
+        .select('username, email, phone, bgmiId')
         .eq('id', user.id)
         .single();
       
@@ -78,13 +82,15 @@ const MyAccount = () => {
       setName(storedName);
       setInterestGames(games);
       
-      // Fetch teams
+      // Fetch teams - we need to get the full team objects with IDs
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
-        .select('name')
+        .select('id, name')
         .eq('owner_id', user.id);
       
       if (teamsError) throw teamsError;
+
+      const teams: Team[] = teamsData || [];
       
       // Fetch wallet balance
       const { data: walletData, error: walletError } = await supabase
@@ -93,24 +99,34 @@ const MyAccount = () => {
         .eq('user_id', user.id)
         .single();
       
-      if (walletError) throw walletError;
+      if (walletError && walletError.code !== 'PGRST116') throw walletError;
       
       // Fetch tournament registrations
-      const { data: registrationsData, error: registrationsError } = await supabase
-        .from('tournament_registrations')
-        .select('tournament_id, status')
-        .or(`team_id.in.(${teamsData.map(t => t.id).join(',')})`);
+      let registrationsData = [];
+      if (teams.length > 0) {
+        const teamIds = teams.map(t => t.id);
+        const { data, error } = await supabase
+          .from('tournament_registrations')
+          .select('tournament_id, status')
+          .in('team_id', teamIds);
+          
+        if (error) throw error;
+        registrationsData = data || [];
+      }
       
-      if (registrationsError && registrationsError.message !== "invalid input syntax for type uuid") throw registrationsError;
-      
-      // Fetch tournament wins (simplified version)
-      const { data: winsData, error: winsError } = await supabase
-        .from('tournament_results')
-        .select('*')
-        .eq('position', 1)
-        .or(`team_id.in.(${teamsData.map(t => t.id).join(',')})`);
-      
-      if (winsError && winsError.message !== "invalid input syntax for type uuid") throw winsError;
+      // Fetch tournament wins
+      let winsData = [];
+      if (teams.length > 0) {
+        const teamIds = teams.map(t => t.id);
+        const { data, error } = await supabase
+          .from('tournament_results')
+          .select('*')
+          .eq('position', 1)
+          .in('team_id', teamIds);
+          
+        if (error) throw error;
+        winsData = data || [];
+      }
       
       // Update user data and stats
       setUserData({
@@ -123,10 +139,10 @@ const MyAccount = () => {
       });
       
       setUserStats({
-        teams: teamsData.map(t => t.name) || [],
-        registeredTournaments: registrationsData?.length || 0,
-        completedTournaments: registrationsData?.filter(r => r.status === 'completed').length || 0,
-        wins: winsData?.length || 0,
+        teams: teams,
+        registeredTournaments: registrationsData.length || 0,
+        completedTournaments: registrationsData.filter((r: any) => r.status === 'completed').length || 0,
+        wins: winsData.length || 0,
         rdCoins: walletData?.balance || 0
       });
     } catch (error) {
@@ -457,8 +473,8 @@ const MyAccount = () => {
                   </div>
                 ) : (
                   userStats.teams.map((team) => (
-                    <div key={team} className="bg-[#1977d4]/10 p-3 rounded-md">
-                      <p className="text-white">{team}</p>
+                    <div key={team.id} className="bg-[#1977d4]/10 p-3 rounded-md">
+                      <p className="text-white">{team.name}</p>
                     </div>
                   ))
                 )}

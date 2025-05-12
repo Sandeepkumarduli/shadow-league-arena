@@ -35,7 +35,9 @@ const News = () => {
         throw error;
       }
       
-      setNews(data || []);
+      // Ensure the data matches the NewsItem interface
+      const typedData = data as NewsItem[];
+      setNews(typedData || []);
     } catch (error) {
       console.error('Error fetching news:', error);
       toast({

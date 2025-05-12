@@ -95,8 +95,8 @@ const Sidebar = ({ className }: { className?: string }) => {
                   : "text-gray-300 hover:bg-[#1977d4]/10 hover:text-[#1977d4]"
               )}
             >
-              <item.icon className="h-5 w-5" />
-              <span>{item.title}</span>
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <span className="truncate">{item.title}</span>
             </NavLink>
           ))}
         </nav>
