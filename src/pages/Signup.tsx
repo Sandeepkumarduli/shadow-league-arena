@@ -66,12 +66,12 @@ const Signup = () => {
       return false;
     }
     
-    // Phone number validation
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(formData.phone.trim())) {
+    // Phone number validation - allowing various formats
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
       toast({
         title: "Invalid phone number",
-        description: "Please enter a valid 10-digit phone number",
+        description: "Please enter a valid phone number with at least 10 digits",
         variant: "destructive",
       });
       return false;
@@ -87,13 +87,21 @@ const Signup = () => {
     
     setIsLoading(true);
     
+    // Trim all form fields to prevent whitespace issues
+    const trimmedData = {
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      password: formData.password
+    };
+    
     try {
-      console.log("Attempting signup with:", formData.username, formData.email, formData.phone);
+      console.log("Attempting signup with:", trimmedData.username, trimmedData.email, trimmedData.phone);
       const success = await signup(
-        formData.username.trim(), 
-        formData.email.trim(), 
-        formData.phone.trim(), 
-        formData.password
+        trimmedData.username, 
+        trimmedData.email, 
+        trimmedData.phone, 
+        trimmedData.password
       );
       
       if (success) {
@@ -177,7 +185,7 @@ const Signup = () => {
                 className="bg-esports-darker border-esports-accent/30"
                 required
               />
-              <p className="text-xs text-gray-400">Enter a 10-digit phone number</p>
+              <p className="text-xs text-gray-400">Enter a phone number with at least 10 digits</p>
             </div>
             
             <div className="space-y-2">
