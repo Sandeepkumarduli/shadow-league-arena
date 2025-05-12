@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X } from "lucide-react";
+import { ArrowLeft, Search, User, Mail, Phone, Shield, Ban, LockKeyhole, Check, X, Coins } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, 
@@ -158,12 +158,12 @@ const AdminUsers = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <Input
+          <InputWithIcon
             placeholder="Search by username, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4 text-gray-400" />}
+            icon={<Search className="h-4 w-4" />}
           />
         </div>
         <div>

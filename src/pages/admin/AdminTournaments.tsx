@@ -5,7 +5,7 @@ import { ArrowLeft, Edit, Trash, Search, PlusCircle, CalendarCheck, Users, Troph
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -162,12 +162,12 @@ const AdminTournaments = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
-          <Input
+          <InputWithIcon
             placeholder="Search tournaments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4 text-gray-400" />}
+            icon={<Search className="h-4 w-4" />}
           />
         </div>
         <div>

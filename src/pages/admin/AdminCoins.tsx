@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { 
   Select,
   SelectContent,
@@ -283,12 +284,12 @@ const AdminCoins = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="md:col-span-2">
-          <Input
+          <InputWithIcon
             placeholder="Search by username..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4 text-gray-400" />}
+            icon={<Search className="h-4 w-4" />}
           />
         </div>
         <div>

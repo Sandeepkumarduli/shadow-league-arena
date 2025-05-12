@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Users, Shield, Trash, Flag } from "lucide-react";
+import { ArrowLeft, Search, User, Users, Shield, Trash, Flag, Trophy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -154,12 +154,12 @@ const AdminTeams = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
-          <Input
+          <InputWithIcon
             placeholder="Search teams..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4 text-gray-400" />}
+            icon={<Search className="h-4 w-4" />}
           />
         </div>
         <div>
