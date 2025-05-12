@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TournamentCard from "@/components/TournamentCard";
@@ -98,7 +99,8 @@ const Tournaments = () => {
   // Filter tournaments based on selections
   let filteredTournaments = availableTournaments.filter((tournament) => {
     // For Tournaments page, we only show Live and Upcoming
-    if (tournament.status === "completed") return false;
+    // Fixed: Don't directly compare with "completed" status since it's not in the allowed types
+    if (["live", "upcoming"].indexOf(tournament.status) === -1) return false;
     if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
     if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
     if (gameTypeFilter !== "all" && tournament.gameType !== gameTypeFilter) return false;
