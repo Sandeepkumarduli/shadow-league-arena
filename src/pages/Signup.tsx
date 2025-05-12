@@ -76,19 +76,23 @@ const Signup = () => {
     setIsLoading(true);
     
     try {
+      console.log("Attempting signup with:", formData.username, formData.email, formData.phone);
       const success = await signup(
-        formData.username, 
-        formData.email, 
-        formData.phone, 
+        formData.username.trim(), 
+        formData.email.trim(), 
+        formData.phone.trim(), 
         formData.password
       );
       
       if (success) {
+        console.log("Signup successful");
         toast({
           title: "Account created",
           description: "Welcome to NexusArena! You've been signed up successfully.",
         });
         navigate("/dashboard");
+      } else {
+        console.log("Signup returned false");
       }
     } catch (error) {
       console.error("Signup error:", error);

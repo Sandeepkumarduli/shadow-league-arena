@@ -27,13 +27,17 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      console.log("Attempting login with email:", email);
+      const success = await login(email.trim(), password);
       if (success) {
+        console.log("Login successful, navigating to dashboard");
         toast({
           title: "Login successful",
           description: "Welcome back to NexusArena!",
         });
         navigate("/dashboard");
+      } else {
+        console.log("Login unsuccessful");
       }
     } catch (error) {
       console.error("Login error:", error);

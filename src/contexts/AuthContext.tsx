@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("Auth state change event:", event);
         setSession(currentSession);
         setSupabaseUser(currentSession?.user ?? null);
         setIsAuthenticated(!!currentSession);
@@ -72,6 +74,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               console.error("Error fetching user data:", error);
               setUser(null);
             } else if (userData) {
+              console.log("User data fetched:", userData);
               setUser({
                 id: userData.id,
                 username: userData.username,
@@ -91,6 +94,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log("Initial session check:", initialSession ? "Session exists" : "No session");
       setSession(initialSession);
       setSupabaseUser(initialSession?.user ?? null);
       setIsAuthenticated(!!initialSession);
@@ -108,6 +112,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (error) {
               console.error("Error fetching user data:", error);
             } else if (userData) {
+              console.log("Initial user data:", userData);
               setUser({
                 id: userData.id,
                 username: userData.username,
@@ -134,12 +139,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Attempting login with email:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
+        console.error("Login error:", error.message);
         toast({
           title: "Login failed",
           description: error.message,
@@ -148,6 +155,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return false;
       }
 
+      console.log("Login successful:", data);
       toast({
         title: "Login successful",
         description: `Welcome back!`,
@@ -167,67 +175,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signup = async (username: string, email: string, phone: string, password: string): Promise<boolean> => {
     try {
-      // Check if email already exists in auth.users table
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email)
-        .single();
-
-      if (existingUser) {
-        toast({
-          title: "Signup failed",
-          description: "Email already registered",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // Check if username already exists
-      const { data: existingUsername } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', username)
-        .single();
-
-      if (existingUsername) {
-        toast({
-          title: "Signup failed",
-          description: "Username already taken",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // Check if phone already exists
-      const { data: existingPhone } = await supabase
-        .from('users')
-        .select('phone')
-        .eq('phone', phone)
-        .single();
-
-      if (existingPhone) {
-        toast({
-          title: "Signup failed",
-          description: "Phone number already registered",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // Create user in Supabase Auth
+      console.log("Starting signup process for:", email);
+      
+      // First, create the user in Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username,
-            phone
+            username, // Include username in the user metadata
+            phone     // Include phone in the user metadata
           }
         }
       });
 
       if (error) {
+        console.error("Signup auth error:", error);
         toast({
           title: "Signup failed",
           description: error.message,
@@ -235,7 +198,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         return false;
       }
-
+      
+      if (!data.user) {
+        console.error("No user returned after signup");
+        toast({
+          title: "Signup failed",
+          description: "User creation failed",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      console.log("Auth signup successful, user created:", data.user);
+      
+      // Then manually insert into users table to ensure username and phone are set
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([
+          { 
+            id: data.user.id, 
+            username, 
+            email, 
+            phone,
+            is_admin: false
+          }
+        ]);
+        
+      if (insertError) {
+        console.error("Error inserting user data:", insertError);
+        
+        // If users table insert fails, we should delete the auth user to maintain consistency
+        // However, this may not be necessary if there's a trigger that handles this already
+        
+        toast({
+          title: "Signup failed",
+          description: "Failed to create user profile",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      console.log("User profile created successfully");
       toast({
         title: "Signup successful",
         description: `Welcome to NexusArena, ${username}!`,
