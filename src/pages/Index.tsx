@@ -6,8 +6,9 @@ import FeaturedGames from "@/components/FeaturedGames";
 import HowItWorks from "@/components/HowItWorks";
 import { Button } from "@/components/ui/button";
 import { Trophy } from "lucide-react";
+import { Link } from "react-router-dom";
 
-// Sample tournaments data
+// Sample tournaments data - only showing upcoming tournaments for public users
 const tournaments = [
   {
     id: "1",
@@ -16,22 +17,10 @@ const tournaments = [
     gameType: "Squad" as const,
     gameImage: "https://images.unsplash.com/photo-1604957570401-1f68b7661371?auto=format&fit=crop&q=80&w=2071&ixlib=rb-4.0.3",
     date: "Jun 15, 2025 • 6:00 PM",
-    entryFee: "$15",
-    prizePool: "$5,000",
+    entryFee: "15",
+    prizePool: "5,000",
     participants: { current: 54, max: 64 },
     status: "upcoming" as const,
-  },
-  {
-    id: "2",
-    title: "League of Legends Pro Series - Summer Split",
-    game: "League of Legends",
-    gameType: "Squad" as const,
-    gameImage: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=2070&ixlib=rb-4.0.3",
-    date: "Live Now",
-    entryFee: "$20",
-    prizePool: "$8,000",
-    participants: { current: 32, max: 32 },
-    status: "live" as const,
   },
   {
     id: "3",
@@ -41,7 +30,7 @@ const tournaments = [
     gameImage: "https://images.unsplash.com/photo-1621075160523-b936ad96132a?auto=format&fit=crop&q=80&w=1470&ixlib=rb-4.0.3",
     date: "Jun 18, 2025 • 7:00 PM",
     entryFee: "Free",
-    prizePool: "$2,500",
+    prizePool: "2,500",
     participants: { current: 87, max: 100 },
     status: "upcoming" as const,
   },
@@ -52,8 +41,8 @@ const tournaments = [
     gameType: "Duo" as const,
     gameImage: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&q=80&w=1374&ixlib=rb-4.0.3",
     date: "Jun 20, 2025 • 3:00 PM",
-    entryFee: "$10",
-    prizePool: "$3,000",
+    entryFee: "10",
+    prizePool: "3,000",
     participants: { current: 45, max: 50 },
     status: "upcoming" as const,
   },
@@ -68,7 +57,7 @@ const Index = () => {
       {/* Hero Section */}
       <HeroSection />
       
-      {/* Featured Tournaments Section */}
+      {/* Featured Tournaments Section - Only showing upcoming tournaments */}
       <section className="py-20 relative">
         {/* Background Effects */}
         <div className="absolute top-1/3 left-0 w-96 h-96 bg-esports-accent/5 rounded-full blur-3xl -translate-x-1/2"></div>
@@ -78,22 +67,47 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-4">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold font-rajdhani">
-                Featured <span className="text-esports-accent">Tournaments</span>
+                Upcoming <span className="text-esports-accent">Tournaments</span>
               </h2>
               <p className="text-gray-400 mt-2">
                 Register now to secure your spot in our most popular competitions
               </p>
             </div>
-            <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10 sm:self-end">
-              View All Tournaments
-            </Button>
+            <Link to="/login">
+              <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10 sm:self-end">
+                View All Tournaments
+              </Button>
+            </Link>
           </div>
           
           {/* Tournaments Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tournaments.map((tournament) => (
-              <TournamentCard key={tournament.id} {...tournament} />
+              <TournamentCard 
+                key={tournament.id} 
+                {...tournament} 
+                onJoin={() => {}} 
+                onDetails={() => {}}
+              />
             ))}
+          </div>
+          
+          {/* Login to Register Notice */}
+          <div className="mt-10 p-6 bg-esports-dark/80 border border-esports-accent/20 rounded-lg text-center">
+            <h3 className="text-xl font-bold text-white mb-3">Want to participate in tournaments?</h3>
+            <p className="text-gray-300 mb-6">Sign up or login to register for upcoming tournaments and start competing!</p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/login">
+                <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white px-8">
+                  Login
+                </Button>
+              </Link>
+              <Link to="/signup">
+                <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10 px-8">
+                  Sign Up Free
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -120,12 +134,16 @@ const Index = () => {
               Join thousands of gamers already competing on NexusArena. Sign up today and start your journey to esports glory.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white px-8 py-6 rounded-md">
-                Sign Up Free
-              </Button>
-              <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10 px-8 py-6 rounded-md">
-                Browse Tournaments
-              </Button>
+              <Link to="/signup">
+                <Button className="bg-esports-accent hover:bg-esports-accent-hover text-white px-8 py-6 rounded-md">
+                  Sign Up Free
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10 px-8 py-6 rounded-md">
+                  Login
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
