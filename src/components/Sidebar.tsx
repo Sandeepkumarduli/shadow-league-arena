@@ -7,7 +7,8 @@ import {
   User,
   Wallet,
   Coins,
-  Newspaper
+  Newspaper,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
@@ -64,7 +65,7 @@ const Sidebar = ({ className }: { className?: string }) => {
   if (!isAdmin) {
     menuItems.push({
       title: "Request Admin",
-      icon: Users,
+      icon: Shield,
       href: "/request-admin",
     });
   }

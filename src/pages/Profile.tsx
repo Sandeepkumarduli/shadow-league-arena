@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,7 +53,7 @@ interface UserData {
   username: string;
   email: string;
   phone: string;
-  bgmiId?: string; // Make bgmiId optional since it might not exist for older users
+  bgmiId: string | null;
 }
 
 const Profile = () => {
@@ -78,18 +79,29 @@ const Profile = () => {
           .eq('id', user.id)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching user data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load user data. Please try again later.",
+            variant: "destructive"
+          });
+          return;
+        }
         
-        setUserData({
-          username: data.username || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          bgmiId: data.bgmiId || "", 
-        });
+        // Ensure we have valid data
+        const userData: UserData = {
+          username: data?.username || "",
+          email: data?.email || "",
+          phone: data?.phone || "",
+          bgmiId: data?.bgmiId || "",
+        };
+        
+        setUserData(userData);
         
         // Update form with fetched data
-        form.setValue("phoneNumber", data.phone || "");
-        form.setValue("bgmiId", data.bgmiId || "");
+        form.setValue("phoneNumber", userData.phone);
+        form.setValue("bgmiId", userData.bgmiId || "");
       } catch (error) {
         console.error("Error fetching user data:", error);
         toast({

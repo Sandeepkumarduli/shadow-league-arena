@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -72,23 +73,39 @@ const MyAccount = () => {
         .eq('id', user.id)
         .single();
       
-      if (userError) throw userError;
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        toast({
+          title: "Error",
+          description: "Failed to load user data. Please try again later.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // Get stored user preferences (in a real app, these would come from user_profiles)
-      const storedName = localStorage.getItem(`user_${user.id}_name`) || userData.username;
+      const storedName = localStorage.getItem(`user_${user.id}_name`) || userData?.username || "";
       const storedGames = localStorage.getItem(`user_${user.id}_games`);
       const games = storedGames ? JSON.parse(storedGames) : ["BGMI"];
       
       setName(storedName);
       setInterestGames(games);
       
-      // Fetch teams - we need to get the full team objects with IDs
+      // Fetch teams
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select('id, name')
         .eq('owner_id', user.id);
       
-      if (teamsError) throw teamsError;
+      if (teamsError) {
+        console.error('Error fetching teams:', teamsError);
+        toast({
+          title: "Error",
+          description: "Failed to load team data.",
+          variant: "destructive"
+        });
+      }
 
       const teams: Team[] = teamsData || [];
       
@@ -99,7 +116,9 @@ const MyAccount = () => {
         .eq('user_id', user.id)
         .single();
       
-      if (walletError && walletError.code !== 'PGRST116') throw walletError;
+      if (walletError && walletError.code !== 'PGRST116') {
+        console.error('Error fetching wallet:', walletError);
+      }
       
       // Fetch tournament registrations
       let registrationsData = [];
@@ -110,11 +129,14 @@ const MyAccount = () => {
           .select('tournament_id, status')
           .in('team_id', teamIds);
           
-        if (error) throw error;
-        registrationsData = data || [];
+        if (error) {
+          console.error('Error fetching registrations:', error);
+        } else {
+          registrationsData = data || [];
+        }
       }
       
-      // Fetch tournament wins
+      // Fetch tournament wins - using the tournament_results table we created
       let winsData = [];
       if (teams.length > 0) {
         const teamIds = teams.map(t => t.id);
@@ -124,16 +146,19 @@ const MyAccount = () => {
           .eq('position', 1)
           .in('team_id', teamIds);
           
-        if (error) throw error;
-        winsData = data || [];
+        if (error) {
+          console.error('Error fetching wins:', error);
+        } else {
+          winsData = data || [];
+        }
       }
       
       // Update user data and stats
       setUserData({
         name: storedName,
-        username: userData.username,
-        email: userData.email,
-        phone: userData.phone || "",
+        username: userData?.username || "",
+        email: userData?.email || "",
+        phone: userData?.phone || "",
         profileImage: "",
         interestGames: games
       });
