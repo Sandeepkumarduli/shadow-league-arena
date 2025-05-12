@@ -1,0 +1,218 @@
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { toast } from "@/hooks/use-toast";
+
+// Form schema with validation
+const profileSchema = z.object({
+  phoneNumber: z.string().min(10, "Phone number must have at least 10 digits"),
+  bgmiId: z.string().min(1, "BGMI ID is required"),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
+  confirmPassword: z.string().optional(),
+}).refine((data) => {
+  // If any password field is filled, then all password fields are required
+  if (data.currentPassword || data.newPassword || data.confirmPassword) {
+    return !!data.currentPassword && !!data.newPassword && !!data.confirmPassword;
+  }
+  return true;
+}, {
+  message: "All password fields must be filled to change password",
+  path: ["currentPassword"],
+}).refine((data) => {
+  // If new password is provided, it must match confirm password
+  if (data.newPassword && data.confirmPassword) {
+    return data.newPassword === data.confirmPassword;
+  }
+  return true;
+}, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
+const Profile = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Default values for the form
+  const defaultValues: ProfileFormValues = {
+    phoneNumber: "1234567890", // In a real app, this would come from user data
+    bgmiId: "BGMI12345", // In a real app, this would come from user data
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  };
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues,
+  });
+
+  const onSubmit = async (data: ProfileFormValues) => {
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully!",
+      });
+      
+      // If password fields are filled, clear them after successful update
+      if (data.currentPassword) {
+        form.setValue("currentPassword", "");
+        form.setValue("newPassword", "");
+        form.setValue("confirmPassword", "");
+      }
+    }, 1000);
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Profile Settings</h1>
+          <p className="text-gray-400">Manage your account information</p>
+        </div>
+
+        <div className="max-w-2xl">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-esports-accent/20 pb-2">
+                  Account Information
+                </h3>
+                
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Phone Number *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter your phone number" 
+                          {...field} 
+                          className="bg-esports-dark border-esports-accent/30 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="bgmiId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">BGMI ID *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter your BGMI ID" 
+                          {...field} 
+                          className="bg-esports-dark border-esports-accent/30 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-esports-accent/20 pb-2">
+                  Change Password (Optional)
+                </h3>
+                
+                <FormField
+                  control={form.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Current Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="password" 
+                          placeholder="Enter current password" 
+                          {...field} 
+                          className="bg-esports-dark border-esports-accent/30 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">New Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="password" 
+                          placeholder="Enter new password" 
+                          {...field} 
+                          className="bg-esports-dark border-esports-accent/30 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Confirm New Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="password" 
+                          placeholder="Confirm new password" 
+                          {...field} 
+                          className="bg-esports-dark border-esports-accent/30 text-white"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  className="bg-esports-accent hover:bg-esports-accent-hover text-white w-full sm:w-auto"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Updating..." : "Update Profile"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Profile;

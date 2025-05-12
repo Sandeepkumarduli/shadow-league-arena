@@ -4,6 +4,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TournamentCard from "@/components/TournamentCard";
 import TournamentFilters from "@/components/TournamentFilters";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 // Sample tournaments data
 const registeredTournaments = [
@@ -84,12 +86,35 @@ const RegisteredTournaments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [gameFilter, setGameFilter] = useState("all");
   const [gameTypeFilter, setGameTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Handler for manual data refresh
+  const handleRefresh = () => {
+    setIsLoading(true);
+    // Simulate API fetch delay
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Data Refreshed",
+        description: "Tournament data has been updated",
+      });
+    }, 1000);
+  };
 
   // Filter tournaments based on selections
   const filteredTournaments = registeredTournaments.filter((tournament) => {
     if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
     if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
     if (gameTypeFilter !== "all" && tournament.gameType !== gameTypeFilter) return false;
+    
+    // Date filter (simplified for example purposes)
+    if (dateFilter) {
+      // Implement date filtering logic here
+      // For demo purposes, we'll just return true
+      return true;
+    }
+    
     return true;
   });
 
@@ -116,9 +141,21 @@ const RegisteredTournaments = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Registered Tournaments</h1>
-          <p className="text-gray-400">View tournaments you have registered for</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Registered Tournaments</h1>
+            <p className="text-gray-400">View tournaments you have registered for</p>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-gray-300 bg-esports-dark border-esports-accent/30 flex items-center gap-2"
+            onClick={handleRefresh}
+          >
+            <RefreshIcon className="h-4 w-4" />
+            Refresh
+          </Button>
         </div>
 
         {/* Filters */}
@@ -129,10 +166,14 @@ const RegisteredTournaments = () => {
           setGameFilter={setGameFilter}
           gameTypeFilter={gameTypeFilter}
           setGameTypeFilter={setGameTypeFilter}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
         />
 
         {/* Tournament Cards */}
-        {filteredTournaments.length > 0 ? (
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : filteredTournaments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTournaments.map((tournament) => (
               <TournamentCard
@@ -161,6 +202,29 @@ const RegisteredTournaments = () => {
         )}
       </div>
     </DashboardLayout>
+  );
+};
+
+// Simple refresh icon component to avoid importing from lucide-react
+const RefreshIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M21 2v6h-6"></path>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+      <path d="M3 22v-6h6"></path>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+    </svg>
   );
 };
 

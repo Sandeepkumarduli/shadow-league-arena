@@ -1,8 +1,12 @@
 
 import { useState } from "react";
-import { Filter } from "lucide-react";
+import { Filter, Calendar } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface TournamentFiltersProps {
   statusFilter: string;
@@ -11,19 +15,10 @@ interface TournamentFiltersProps {
   setGameFilter: (value: string) => void;
   gameTypeFilter?: string;
   setGameTypeFilter?: (value: string) => void;
+  dateFilter?: Date | null;
+  setDateFilter?: (value: Date | null) => void;
   showCompletedFilter?: boolean;
 }
-
-// Game options with coming soon status
-const gameOptions = [
-  { value: "all", label: "All Games" },
-  { value: "BGMI", label: "BGMI", available: true },
-  { value: "COD", label: "COD", available: true },
-  { value: "Valorant", label: "Valorant", available: true },
-  { value: "Free Fire", label: "Free Fire", available: false },
-  { value: "Fortnite", label: "Fortnite", available: false },
-  { value: "League of Legends", label: "League of Legends", available: false },
-];
 
 // Game type options
 const gameTypeOptions = [
@@ -40,6 +35,8 @@ const TournamentFilters = ({
   setGameFilter,
   gameTypeFilter = "all",
   setGameTypeFilter,
+  dateFilter = null,
+  setDateFilter,
   showCompletedFilter = true
 }: TournamentFiltersProps) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -69,18 +66,12 @@ const TournamentFilters = ({
         </Select>
         
         <Select value={gameFilter} onValueChange={setGameFilter}>
-          <SelectTrigger className="w-[180px] bg-esports-dark border-esports-accent/30 text-gray-300">
+          <SelectTrigger className="w-[220px] bg-esports-dark border-esports-accent/30 text-gray-300">
             <SelectValue placeholder="Game" />
           </SelectTrigger>
           <SelectContent className="bg-esports-dark border-esports-accent/30">
-            {gameOptions.map((game) => (
-              <SelectItem key={game.value} value={game.value} disabled={!game.available}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{game.label}</span>
-                  {!game.available && <span className="text-xs text-esports-accent ml-2">(Coming Soon)</span>}
-                </div>
-              </SelectItem>
-            ))}
+            <SelectItem value="all">All Games</SelectItem>
+            <SelectItem value="BGMI">BGMI</SelectItem>
           </SelectContent>
         </Select>
 
@@ -95,6 +86,48 @@ const TournamentFilters = ({
               ))}
             </SelectContent>
           </Select>
+        )}
+        
+        {setDateFilter && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-[180px] justify-start gap-2 bg-esports-dark border-esports-accent/30 text-gray-300"
+              >
+                <Calendar className="h-4 w-4 text-esports-accent" />
+                {dateFilter ? format(dateFilter, "MMM dd, yyyy") : "Filter by date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-esports-dark border-esports-accent/30">
+              <CalendarComponent
+                mode="single"
+                selected={dateFilter || undefined}
+                onSelect={setDateFilter}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+              {dateFilter && (
+                <div className="p-2 border-t border-esports-accent/20 flex justify-between">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-gray-300 hover:bg-esports-accent/10"
+                    onClick={() => setDateFilter(null)}
+                  >
+                    Clear
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="bg-esports-accent hover:bg-esports-accent-hover"
+                    onClick={() => {}}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 
@@ -129,14 +162,8 @@ const TournamentFilters = ({
               <SelectValue placeholder="Game" />
             </SelectTrigger>
             <SelectContent className="bg-esports-dark border-esports-accent/30">
-              {gameOptions.map((game) => (
-                <SelectItem key={game.value} value={game.value} disabled={!game.available}>
-                  <div className="flex items-center justify-between w-full">
-                    <span>{game.label}</span>
-                    {!game.available && <span className="text-xs text-esports-accent ml-2">(Soon)</span>}
-                  </div>
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All Games</SelectItem>
+              <SelectItem value="BGMI">BGMI</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -154,6 +181,51 @@ const TournamentFilters = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        )}
+        
+        {setDateFilter && (
+          <div>
+            <label className="text-sm text-gray-300 mb-1 block">Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 bg-esports-dark border-esports-accent/30 text-gray-300"
+                >
+                  <Calendar className="h-4 w-4 text-esports-accent" />
+                  {dateFilter ? format(dateFilter, "MMM dd, yyyy") : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-esports-dark border-esports-accent/30">
+                <CalendarComponent
+                  mode="single"
+                  selected={dateFilter || undefined}
+                  onSelect={setDateFilter}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+                {dateFilter && (
+                  <div className="p-2 border-t border-esports-accent/20 flex justify-between">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-300 hover:bg-esports-accent/10"
+                      onClick={() => setDateFilter(null)}
+                    >
+                      Clear
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-esports-accent hover:bg-esports-accent-hover"
+                      onClick={() => {}}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
         )}
       </CollapsibleContent>

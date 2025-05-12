@@ -3,9 +3,11 @@ import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TournamentCard from "@/components/TournamentCard";
 import TournamentFilters from "@/components/TournamentFilters";
+import TeamSelectionModal from "@/components/TeamSelectionModal";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 // Sample tournaments data
 const availableTournaments = [
@@ -94,16 +96,40 @@ const Tournaments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [gameFilter, setGameFilter] = useState("all");
   const [gameTypeFilter, setGameTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState("newest");
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState<any>(null);
+  const [registeredTournamentIds, setRegisteredTournamentIds] = useState<string[]>([]);
+
+  // Handler for manual data refresh
+  const handleRefresh = () => {
+    setIsLoading(true);
+    // Simulate API fetch delay
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Data Refreshed",
+        description: "Tournament data has been updated",
+      });
+    }, 1000);
+  };
 
   // Filter tournaments based on selections
   let filteredTournaments = availableTournaments.filter((tournament) => {
     // For Tournaments page, we only show Live and Upcoming
-    // Fixed: Don't directly compare with "completed" status since it's not in the allowed types
     if (["live", "upcoming"].indexOf(tournament.status) === -1) return false;
     if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
     if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
     if (gameTypeFilter !== "all" && tournament.gameType !== gameTypeFilter) return false;
+    
+    // Date filter (simplified for example purposes)
+    if (dateFilter) {
+      // Implement date filtering logic here
+      // For demo purposes, we'll just return true
+      return true;
+    }
+    
     return true;
   });
 
@@ -118,7 +144,29 @@ const Tournaments = () => {
   });
 
   const handleJoinTournament = (tournament: (typeof availableTournaments)[0]) => {
-    // For Solo tournaments
+    // For registered tournaments, don't allow re-registration
+    if (registeredTournamentIds.includes(tournament.id)) {
+      toast({
+        title: "Already Registered",
+        description: `You are already registered for ${tournament.title}`,
+      });
+      return;
+    }
+    
+    // Open team selection modal
+    setSelectedTournament(tournament);
+  };
+  
+  const handleRegister = (tournamentId: string, teamId: string | null) => {
+    // Close the modal
+    setSelectedTournament(null);
+    
+    // Add to registered tournaments
+    setRegisteredTournamentIds([...registeredTournamentIds, tournamentId]);
+    
+    const tournament = availableTournaments.find(t => t.id === tournamentId);
+    if (!tournament) return;
+    
     if (tournament.gameType === "Solo") {
       toast({
         title: "Registered Successfully",
@@ -126,62 +174,45 @@ const Tournaments = () => {
       });
       return;
     }
-
-    // Find a team for the specific game
-    const eligibleTeams = myTeams.filter(team => team.game === tournament.game);
     
-    if (eligibleTeams.length === 0) {
-      toast({
-        title: "No teams available",
-        description: `You need to create a team for ${tournament.game} first.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check team size requirements
-    if (tournament.gameType === "Duo") {
-      const duoTeam = eligibleTeams.find(team => team.members === 2);
-      
-      if (!duoTeam) {
-        toast({
-          title: "Team size mismatch",
-          description: "Duo tournaments require a team of exactly 2 members.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Registered Successfully",
-        description: `Team ${duoTeam.name} has been registered for ${tournament.title}`,
-      });
-    } else if (tournament.gameType === "Squad") {
-      const squadTeam = eligibleTeams.find(team => team.members >= 4);
-      
-      if (!squadTeam) {
-        toast({
-          title: "Team size mismatch",
-          description: "Squad tournaments require a team of at least 4 members.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Registered Successfully",
-        description: `Team ${squadTeam.name} has been registered for ${tournament.title}`,
-      });
-    }
+    const team = myTeams.find(t => t.id === teamId);
+    if (!team) return;
+    
+    toast({
+      title: "Registered Successfully",
+      description: `Team ${team.name} has been registered for ${tournament.title}`,
+    });
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Tournaments</h1>
-          <p className="text-gray-400">Browse all available tournaments</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Tournaments</h1>
+            <p className="text-gray-400">Browse all available tournaments</p>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-gray-300 bg-esports-dark border-esports-accent/30 flex items-center gap-2"
+            onClick={handleRefresh}
+          >
+            <RefreshIcon className="h-4 w-4" />
+            Refresh
+          </Button>
         </div>
+
+        {/* Team Selection Modal */}
+        {selectedTournament && (
+          <TeamSelectionModal 
+            tournament={selectedTournament} 
+            teams={myTeams}
+            onClose={() => setSelectedTournament(null)}
+            onRegister={handleRegister}
+          />
+        )}
 
         {/* Filters and Sort */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -193,6 +224,8 @@ const Tournaments = () => {
               setGameFilter={setGameFilter}
               gameTypeFilter={gameTypeFilter}
               setGameTypeFilter={setGameTypeFilter}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
               showCompletedFilter={false}
             />
           </div>
@@ -211,7 +244,9 @@ const Tournaments = () => {
         </div>
 
         {/* Tournament Cards */}
-        {filteredTournaments.length > 0 ? (
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : filteredTournaments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTournaments.map((tournament) => (
               <TournamentCard
@@ -225,6 +260,7 @@ const Tournaments = () => {
                 prizePool={tournament.prizePool}
                 participants={tournament.participants}
                 status={tournament.status}
+                isRegistered={registeredTournamentIds.includes(tournament.id)}
                 onJoin={() => handleJoinTournament(tournament)}
               />
             ))}
@@ -236,6 +272,29 @@ const Tournaments = () => {
         )}
       </div>
     </DashboardLayout>
+  );
+};
+
+// Simple refresh icon component to avoid importing from lucide-react
+const RefreshIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M21 2v6h-6"></path>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+      <path d="M3 22v-6h6"></path>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+    </svg>
   );
 };
 

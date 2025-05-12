@@ -1,5 +1,5 @@
 
-import { CalendarCheck, Users, Trophy, Gamepad, Check } from "lucide-react";
+import { CalendarCheck, Users, Trophy, Gamepad } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -46,13 +46,17 @@ const TournamentCard = ({
     completed: "bg-gray-500/20 text-gray-400",
   };
 
+  // Only show Join button for upcoming tournaments and when not already registered
+  const showJoinButton = status === "upcoming" && !isRegistered;
+  
+  // Button text based on status and registration
   const buttonText = isRegistered
     ? "Registered"
-    : status === "live" 
-      ? "Join Now" 
-      : status === "upcoming" 
-        ? "Register" 
-        : "View Results";
+    : status === "upcoming" 
+      ? "Register" 
+      : status === "completed"
+        ? "View Results"
+        : "Join Now";
 
   return (
     <div className="esports-card p-5 flex flex-col justify-between h-full">
@@ -132,18 +136,19 @@ const TournamentCard = ({
           <span className="font-semibold text-white">{entryFee}</span>
         </div>
         
-        <Button 
-          size="sm" 
-          className={isRegistered 
-            ? "bg-esports-green hover:bg-esports-green/90 text-white flex items-center gap-1.5" 
-            : "bg-esports-accent hover:bg-esports-accent-hover text-white"
-          }
-          onClick={onJoin}
-          disabled={isRegistered || status === "completed"}
-        >
-          {isRegistered && <Check className="h-3.5 w-3.5" />}
-          {buttonText}
-        </Button>
+        {(showJoinButton || isRegistered || status === "completed") && (
+          <Button 
+            size="sm" 
+            className={isRegistered 
+              ? "bg-gray-600 hover:bg-gray-700 text-white" // Flat grey for registered
+              : "bg-esports-accent hover:bg-esports-accent-hover text-white"
+            }
+            onClick={onJoin}
+            disabled={isRegistered || status === "completed" || status === "live"}
+          >
+            {buttonText}
+          </Button>
+        )}
       </div>
     </div>
   );
