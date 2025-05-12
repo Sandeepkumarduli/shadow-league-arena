@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -11,103 +10,104 @@ import { CalendarCheck, ChevronDown, Filter, Gamepad, Trophy, Users } from "luci
 import TournamentFilters from "@/components/TournamentFilters";
 
 // Sample tournaments data
-const registeredTournaments = [
-  {
-    id: "1",
-    title: "BGMI Pro League Season 5",
-    game: "BGMI",
-    gameType: "Squad" as const,
-    date: "May 18, 2025 • 8:00 PM",
-    entryFee: "Free",
-    prizePool: "$3,000",
-    participants: { current: 64, max: 100 },
-    status: "upcoming" as const,
-    roomId: "",
-    password: "",
+const registeredTournaments = [{
+  id: "1",
+  title: "BGMI Pro League Season 5",
+  game: "BGMI",
+  gameType: "Squad" as const,
+  date: "May 18, 2025 • 8:00 PM",
+  entryFee: "Free",
+  prizePool: "$3,000",
+  participants: {
+    current: 64,
+    max: 100
   },
-  {
-    id: "2",
-    title: "BGMI Weekend Cup",
-    game: "BGMI",
-    gameType: "Duo" as const,
-    date: "Live Now",
-    entryFee: "$5",
-    prizePool: "$1,200",
-    participants: { current: 98, max: 100 },
-    status: "live" as const,
-    roomId: "BGM45678",
-    password: "winner2025",
+  status: "upcoming" as const,
+  roomId: "",
+  password: ""
+}, {
+  id: "2",
+  title: "BGMI Weekend Cup",
+  game: "BGMI",
+  gameType: "Duo" as const,
+  date: "Live Now",
+  entryFee: "$5",
+  prizePool: "$1,200",
+  participants: {
+    current: 98,
+    max: 100
   },
-  {
-    id: "3",
-    title: "Valorant Championship Series",
-    game: "Valorant",
-    gameType: "Squad" as const,
-    date: "May 15, 2025 • 7:00 PM",
-    entryFee: "$10",
-    prizePool: "$2,500",
-    participants: { current: 32, max: 32 },
-    status: "upcoming" as const,
-    roomId: "",
-    password: "",
+  status: "live" as const,
+  roomId: "BGM45678",
+  password: "winner2025"
+}, {
+  id: "3",
+  title: "Valorant Championship Series",
+  game: "Valorant",
+  gameType: "Squad" as const,
+  date: "May 15, 2025 • 7:00 PM",
+  entryFee: "$10",
+  prizePool: "$2,500",
+  participants: {
+    current: 32,
+    max: 32
   },
-  {
-    id: "4",
-    title: "COD Mobile Battle Royale",
-    game: "COD",
-    gameType: "Solo" as const,
-    date: "Completed on May 10",
-    entryFee: "$8",
-    prizePool: "$1,800",
-    participants: { current: 50, max: 50 },
-    status: "completed" as const,
-    roomId: "",
-    password: "",
-    position: 3,
+  status: "upcoming" as const,
+  roomId: "",
+  password: ""
+}, {
+  id: "4",
+  title: "COD Mobile Battle Royale",
+  game: "COD",
+  gameType: "Solo" as const,
+  date: "Completed on May 10",
+  entryFee: "$8",
+  prizePool: "$1,800",
+  participants: {
+    current: 50,
+    max: 50
   },
-];
+  status: "completed" as const,
+  roomId: "",
+  password: "",
+  position: 3
+}];
 
 // Sample teams data
-const myTeams = [
-  {
-    id: "1",
-    name: "Phoenix Rising",
-    game: "BGMI",
-    members: 4,
-    tournaments: 12,
-    wins: 3,
-  },
-  {
-    id: "2",
-    name: "Valorant Vipers",
-    game: "Valorant",
-    members: 5,
-    tournaments: 8,
-    wins: 2,
-  },
-];
+const myTeams = [{
+  id: "1",
+  name: "Phoenix Rising",
+  game: "BGMI",
+  members: 4,
+  tournaments: 12,
+  wins: 3
+}, {
+  id: "2",
+  name: "Valorant Vipers",
+  game: "Valorant",
+  members: 5,
+  tournaments: 8,
+  wins: 2
+}];
 
 // User stats
 const userStats = {
   registeredTournaments: 20,
   completedTournaments: 15,
   totalTournaments: 35,
-  wins: 4,
+  wins: 4
 };
-
 const Dashboard = () => {
   const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Filter tournaments based on selections
-  const filteredTournaments = registeredTournaments.filter((tournament) => {
+  const filteredTournaments = registeredTournaments.filter(tournament => {
     if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
     if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
     return true;
   });
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="space-y-8">
         {/* User Profile Section */}
         <div className="bg-esports-dark rounded-xl p-6">
@@ -172,18 +172,13 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">My Teams</h2>
-            <Button 
-              variant="outline" 
-              className="border-esports-accent text-white hover:bg-esports-accent/10"
-              asChild
-            >
+            <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10" asChild>
               <Link to="/my-teams">View All</Link>
             </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myTeams.map((team) => (
-              <Card key={team.id} className="bg-esports-dark border-esports-accent/20">
+            {myTeams.map(team => <Card key={team.id} className="bg-esports-dark border-esports-accent/20">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between">
                     <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
@@ -208,8 +203,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
 
@@ -217,27 +211,17 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Registered Tournaments</h2>
-            <Button 
-              variant="outline" 
-              className="border-esports-accent text-white hover:bg-esports-accent/10"
-              asChild
-            >
+            <Button variant="outline" className="border-esports-accent text-white hover:bg-esports-accent/10" asChild>
               <Link to="/registered-tournaments">View All</Link>
             </Button>
           </div>
 
           {/* Filters */}
-          <TournamentFilters 
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            gameFilter={gameFilter}
-            setGameFilter={setGameFilter}
-          />
+          <TournamentFilters statusFilter={statusFilter} setStatusFilter={setStatusFilter} gameFilter={gameFilter} setGameFilter={setGameFilter} />
 
           {/* Tournament Cards */}
           <div className="space-y-4">
-            {filteredTournaments.map((tournament) => (
-              <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20">
+            {filteredTournaments.map(tournament => <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20">
                 <div className="p-5">
                   {/* Tournament Header */}
                   <div className="flex justify-between items-start mb-4">
@@ -251,9 +235,7 @@ const Dashboard = () => {
                     </div>
                     
                     <Badge variant="outline" className={`
-                      ${tournament.status === 'live' ? 'bg-esports-green/20 text-esports-green' : 
-                        tournament.status === 'upcoming' ? 'bg-amber-400/20 text-amber-400' : 
-                        'bg-gray-500/20 text-gray-400'} 
+                      ${tournament.status === 'live' ? 'bg-esports-green/20 text-esports-green' : tournament.status === 'upcoming' ? 'bg-amber-400/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'} 
                       border-none
                     `}>
                       {tournament.status === "live" && <span className="mr-1.5 w-2 h-2 bg-esports-green rounded-full inline-block animate-pulse"></span>}
@@ -275,7 +257,7 @@ const Dashboard = () => {
                       
                       <div className="flex items-center text-sm text-gray-300">
                         <Users className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>{tournament.participants.current} / {tournament.participants.max} participants</span>
+                        <span className="change participants to slots everywhere ">{tournament.participants.current} / {tournament.participants.max} participants</span>
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-300">
@@ -285,8 +267,7 @@ const Dashboard = () => {
                     </div>
                     
                     {/* Room Details (only for live tournaments) */}
-                    {tournament.status === 'live' && (
-                      <div className="bg-esports-accent/10 p-3 rounded-md">
+                    {tournament.status === 'live' && <div className="bg-esports-accent/10 p-3 rounded-md">
                         <div className="text-esports-accent font-medium mb-2">Room Details</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -298,28 +279,22 @@ const Dashboard = () => {
                             <div className="text-white font-mono">{tournament.password}</div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      </div>}
                     
                     {/* Completed Tournament Result */}
-                    {tournament.status === 'completed' && tournament.position && (
-                      <div className="bg-esports-accent/10 p-3 rounded-md">
+                    {tournament.status === 'completed' && tournament.position && <div className="bg-esports-accent/10 p-3 rounded-md">
                         <div className="text-esports-accent font-medium mb-2">Results</div>
                         <div className="flex items-center">
                           <Gamepad className="h-4 w-4 mr-2 text-esports-accent" />
                           <span className="text-white">Position: #{tournament.position}</span>
                         </div>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </div>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 };
-
 export default Dashboard;
