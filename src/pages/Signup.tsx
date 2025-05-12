@@ -33,6 +33,18 @@ const Signup = () => {
   };
   
   const validateForm = () => {
+    // Check if all fields are filled
+    for (const [key, value] of Object.entries(formData)) {
+      if (!value.trim()) {
+        toast({
+          title: "Missing information",
+          description: `Please fill in your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    
     // Check if passwords match
     if (formData.password !== formData.confirmPassword) {
       toast({
@@ -56,7 +68,7 @@ const Signup = () => {
     
     // Phone number validation
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
+    if (!phoneRegex.test(formData.phone.trim())) {
       toast({
         title: "Invalid phone number",
         description: "Please enter a valid 10-digit phone number",
