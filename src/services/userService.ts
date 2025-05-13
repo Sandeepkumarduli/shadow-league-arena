@@ -53,11 +53,12 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
       });
     }
     
-    // Combine user data with balance - explicitly construct User objects to avoid deep instantiation
+    // Combine user data with balance - manually construct User objects with correct typing
     const result: User[] = [];
     
     if (users) {
       for (const user of users) {
+        // Create a properly typed User object
         const userWithBalance: User = {
           id: user.id,
           username: user.username,
@@ -65,7 +66,7 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
           phone: user.phone,
           created_at: user.created_at,
           updated_at: user.updated_at,
-          is_admin: user.is_admin || false,
+          is_admin: Boolean(user.is_admin),
           bgmiid: user.bgmiid,
           balance: balanceMap[user.id] || 0
         };
@@ -121,7 +122,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       
     if (walletError) {
       console.error('Error fetching user wallet:', walletError);
-      // Continue without the balance data, explicitly constructing a User object
+      // Create a properly typed User object without balance data
       return {
         id: data.id,
         username: data.username,
@@ -129,13 +130,13 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
         phone: data.phone,
         created_at: data.created_at,
         updated_at: data.updated_at,
-        is_admin: data.is_admin || false,
+        is_admin: Boolean(data.is_admin),
         bgmiid: data.bgmiid,
         balance: 0
       };
     }
     
-    // Return a fully constructed User object to avoid type inference issues
+    // Return a properly typed User object with all fields
     return {
       id: data.id,
       username: data.username,
@@ -143,7 +144,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       phone: data.phone,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_admin: data.is_admin || false,
+      is_admin: Boolean(data.is_admin),
       bgmiid: data.bgmiid,
       balance: wallet?.balance || 0
     };
