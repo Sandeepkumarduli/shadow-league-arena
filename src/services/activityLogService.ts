@@ -1,8 +1,15 @@
 
-import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-// ActivityLog interface
+// Define the UserData interface used in the ActivityLogWithUser interface
+interface UserData {
+  id: string;
+  username: string;
+  email: string;
+}
+
+// Define the ActivityLog interfaces
 export interface ActivityLog {
   id: string;
   type: string;
@@ -11,101 +18,127 @@ export interface ActivityLog {
   user_id?: string;
   created_at: string;
   metadata?: any;
-  username?: string;
 }
 
-// Fetch activity logs with optional filters
-export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<ActivityLog[]> => {
+export interface ActivityLogWithUser extends ActivityLog {
+  user?: UserData;
+}
+
+interface LogActivityParams {
+  type: string;
+  action: string;
+  details: string;
+  metadata?: Record<string, any>;
+  userId?: string;
+}
+
+// Function to log an activity
+export const logActivity = async ({
+  type,
+  action,
+  details,
+  metadata = {},
+  userId
+}: LogActivityParams): Promise<void> => {
   try {
-    let query = supabase
+    const currentUser = userId || (await supabase.auth.getUser()).data.user?.id;
+    
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert({
+        type,
+        action,
+        details,
+        metadata,
+        user_id: currentUser
+      });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error logging activity:', error);
+    // Don't show toast for logging errors to avoid overwhelming the user
+    // These are background operations that shouldn't interrupt the UX
+  }
+};
+
+// Function to fetch activity logs with user information
+export const fetchActivityLogs = async (): Promise<ActivityLogWithUser[]> => {
+  try {
+    // First, fetch all activity logs
+    const { data: logs, error: logsError } = await supabase
       .from('activity_logs')
       .select('*')
       .order('created_at', { ascending: false });
+      
+    if (logsError) throw logsError;
+    if (!logs) return [];
     
-    // Apply filters if provided
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (key === 'type' && value !== 'all') {
-            // Use type assertion to help TypeScript
-            (query as any).eq('type', value);
-          } else if (key !== 'type') {
-            // Use type assertion to help TypeScript
-            (query as any).eq(key, value);
-          }
-        }
-      });
-    }
+    // Get unique user IDs from the logs
+    const userIds = logs
+      .map(log => log.user_id)
+      .filter((id, index, self) => id && self.indexOf(id) === index) as string[];
     
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    
-    // Get usernames for user_ids
-    const userIds = data
-      ?.filter(log => log.user_id)
-      .map(log => log.user_id) || [];
-    
-    let usernameMap: Record<string, string> = {};
-    
+    // If there are user IDs, fetch user data
+    let usersMap: Record<string, UserData> = {};
     if (userIds.length > 0) {
-      const { data: userData, error: userError } = await supabase
+      const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id, username')
+        .select('id, username, email')
         .in('id', userIds);
-        
-      if (!userError && userData) {
-        usernameMap = userData.reduce((acc, user) => {
-          acc[user.id] = user.username;
-          return acc;
-        }, {} as Record<string, string>);
-      }
+      
+      if (usersError) throw usersError;
+      
+      // Convert users array to a map for quick lookup
+      usersMap = (users || []).reduce((map: Record<string, UserData>, user) => {
+        map[user.id] = user;
+        return map;
+      }, {});
     }
     
-    // Transform the data to include the username
-    return data ? data.map(log => ({
+    // Combine logs with user data
+    return logs.map(log => ({
       ...log,
-      username: log.user_id ? usernameMap[log.user_id] : undefined
-    })) : [];
+      user: log.user_id ? usersMap[log.user_id] : undefined
+    }));
+    
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     toast({
       title: "Failed to fetch activity logs",
-      description: "There was an error loading activity logs. Please try again.",
+      description: "There was an error loading the activity logs.",
       variant: "destructive"
     });
     return [];
   }
 };
 
-// Subscribe to activity log changes
-export const subscribeActivityLogs = (callback: (logs: ActivityLog[]) => void, filters?: Record<string, any>) => {
-  // Initial fetch
-  fetchActivityLogs(filters).then(callback);
-  
-  // Set up real-time subscription
-  const channel = createRealtimeChannel('activity_logs', () => {
-    fetchActivityLogs(filters).then(callback);
-  });
-  
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
-// Create a new activity log
-export const logActivity = async (activityData: Omit<ActivityLog, 'id' | 'created_at'>) => {
+// Function to clear activity logs older than a specified time
+export const clearOldActivityLogs = async (days = 30): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
+    // Calculate the cutoff date (30 days ago by default)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    const { error } = await supabase
       .from('activity_logs')
-      .insert([activityData])
-      .select();
+      .delete()
+      .lt('created_at', cutoffDate.toISOString());
       
     if (error) throw error;
     
-    return data[0];
+    toast({
+      title: "Logs Cleared",
+      description: `Activity logs older than ${days} days have been cleared.`,
+    });
+    
+    return true;
   } catch (error) {
-    console.error('Error logging activity:', error);
-    return null;
+    console.error('Error clearing activity logs:', error);
+    toast({
+      title: "Failed to clear logs",
+      description: "There was an error clearing the activity logs.",
+      variant: "destructive"
+    });
+    return false;
   }
 };

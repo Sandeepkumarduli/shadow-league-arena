@@ -1,15 +1,22 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { logActivity } from "./activityLogService";
 
-// Define interface for admin wallet
-export interface AdminWallet {
+// Define interfaces for our DB responses and parameters
+interface AdminWallet {
   id: string;
   balance: number;
   updated_at: string;
 }
 
-// Fetch the admin wallet
+interface TransactionParams {
+  userId: string;
+  amount: number;
+  description?: string;
+}
+
+// Fetch admin wallet
 export const fetchAdminWallet = async (): Promise<AdminWallet | null> => {
   try {
     const { data, error } = await supabase
@@ -19,134 +26,102 @@ export const fetchAdminWallet = async (): Promise<AdminWallet | null> => {
     
     if (error) throw error;
     
-    return data as AdminWallet;
+    return data;
   } catch (error) {
     console.error('Error fetching admin wallet:', error);
     toast({
       title: "Failed to fetch admin wallet",
-      description: "There was an error loading the admin wallet. Please try again.",
+      description: "There was an error loading admin wallet data.",
       variant: "destructive"
     });
     return null;
   }
 };
 
-// Update the admin wallet balance
-export const updateAdminWalletBalance = async (newBalance: number): Promise<boolean> => {
+// Give coins to user (from admin wallet to user wallet)
+export const giveCoinsToUser = async ({ userId, amount, description }: TransactionParams): Promise<boolean> => {
+  if (amount <= 0) {
+    toast({
+      title: "Invalid amount",
+      description: "Please enter a positive amount of coins.",
+      variant: "destructive"
+    });
+    return false;
+  }
+  
   try {
-    const { data, error } = await supabase
-      .from('admin_wallet')
-      .update({ balance: newBalance })
-      .eq('id', 'admin_wallet') // Assuming there's only one admin wallet with id 'admin_wallet'
-      .select();
-    
+    // Call Supabase RPC function to give coins
+    const { data, error } = await supabase.rpc(
+      'give_coins_to_user',
+      { user_id: userId, coin_amount: amount, transaction_description: description || "Admin gave coins" } as any
+    );
+
     if (error) throw error;
     
-    if (!data || data.length === 0) {
-      console.error('Admin wallet not found or update failed.');
-      toast({
-        title: "Failed to update admin wallet",
-        description: "Admin wallet not found or update failed.",
-        variant: "destructive"
-      });
-      return false;
-    }
+    // Log the activity
+    await logActivity({
+      type: 'transaction',
+      action: 'give_coins',
+      details: `Admin gave ${amount} rdCoins to user`,
+      metadata: { userId, amount, description }
+    });
     
     toast({
-      title: "Admin wallet updated",
-      description: "Admin wallet balance updated successfully.",
+      title: "Coins Added",
+      description: `Successfully added ${amount} rdCoins to user wallet.`,
     });
     
     return true;
   } catch (error) {
-    console.error('Error updating admin wallet:', error);
+    console.error('Error giving coins to user:', error);
     toast({
-      title: "Failed to update admin wallet",
-      description: "There was an error updating the admin wallet. Please try again.",
+      title: "Failed to give coins",
+      description: "There was an error processing this transaction.",
       variant: "destructive"
     });
     return false;
   }
 };
 
-// Process coin transfer from admin to user
-export const transferCoinsToUser = async (
-  userId: string,
-  amount: number,
-  reason: string
-): Promise<boolean> => {
+// Deduct coins from user (add to admin wallet)
+export const deductCoinsFromUser = async ({ userId, amount, description }: TransactionParams): Promise<boolean> => {
   if (amount <= 0) {
     toast({
       title: "Invalid amount",
-      description: "Amount must be greater than zero.",
+      description: "Please enter a positive amount of coins.",
       variant: "destructive"
     });
     return false;
   }
-
+  
   try {
-    // Use the any type to bypass TypeScript checking for the RPC parameters
-    const { error } = await supabase.rpc('transfer_coins_from_admin', {
-      target_user_id: userId,
-      amount_to_transfer: amount,
-      transfer_reason: reason
-    } as any);
-    
+    // Call Supabase RPC function to deduct coins
+    const { data, error } = await supabase.rpc(
+      'deduct_coins_from_user',
+      { user_id: userId, coin_amount: amount, transaction_description: description || "Admin deducted coins" } as any
+    );
+
     if (error) throw error;
     
+    // Log the activity
+    await logActivity({
+      type: 'transaction',
+      action: 'deduct_coins',
+      details: `Admin deducted ${amount} rdCoins from user`,
+      metadata: { userId, amount, description }
+    });
+    
     toast({
-      title: "Transfer Successful",
-      description: `Successfully transferred ${amount} coins to user.`,
+      title: "Coins Deducted",
+      description: `Successfully deducted ${amount} rdCoins from user wallet.`,
     });
     
     return true;
   } catch (error) {
-    console.error('Error transferring coins:', error);
+    console.error('Error deducting coins from user:', error);
     toast({
-      title: "Transfer Failed",
-      description: "There was an error transferring coins. Please try again.",
-      variant: "destructive"
-    });
-    return false;
-  }
-};
-
-// Process coin deduction from user by admin
-export const deductCoinsFromUser = async (
-  userId: string,
-  amount: number,
-  reason: string
-): Promise<boolean> => {
-  if (amount <= 0) {
-    toast({
-      title: "Invalid amount",
-      description: "Amount must be greater than zero.",
-      variant: "destructive"
-    });
-    return false;
-  }
-
-  try {
-    // Use the any type to bypass TypeScript checking for the RPC parameters
-    const { error } = await supabase.rpc('deduct_coins_from_user', {
-      target_user_id: userId,
-      amount_to_deduct: amount,
-      deduct_reason: reason
-    } as any);
-
-    if (error) throw error;
-
-    toast({
-      title: "Deduction Successful",
-      description: `Successfully deducted ${amount} coins from user.`,
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error deducting coins:', error);
-    toast({
-      title: "Deduction Failed",
-      description: "There was an error deducting coins. Please try again.",
+      title: "Failed to deduct coins",
+      description: "There was an error processing this transaction.",
       variant: "destructive"
     });
     return false;

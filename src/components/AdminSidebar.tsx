@@ -75,9 +75,19 @@ const menuItems = [
     href: "/admin/big-tournaments",
   },
   {
+    title: "Profile",
+    icon: User,
+    href: "/admin/profile",
+  },
+  {
     title: "Settings",
     icon: Settings,
     href: "/admin/settings",
+  },
+  {
+    title: "My Account",
+    icon: Wallet,
+    href: "/admin/account",
   },
   {
     title: "Coin Balance",

@@ -12,35 +12,47 @@ export interface User {
   updated_at: string;
   is_admin: boolean;
   bgmiid?: string;
-  balance: number; // Added balance field
+  balance: number;
 }
+
+// Type for update user params
+type UpdateUserParams = Partial<Omit<User, 'id' | 'created_at' | 'updated_at' | 'balance'>> & { id: string };
 
 // Fetch users with optional filters
 export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]> => {
   try {
-    let query = supabase
-      .from('users')
-      .select('*, wallets!inner(balance)')
-      .order('created_at', { ascending: false });
+    // First get users
+    let query = supabase.from('users').select('*');
     
     // Apply filters if provided
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          // Use type assertion to help TypeScript
-          (query as any).eq(key, value);
+          query = query.eq(key, value);
         }
       });
     }
     
-    const { data, error } = await query;
+    const { data: users, error: usersError } = await query;
+    if (usersError) throw usersError;
     
-    if (error) throw error;
+    // Then fetch their wallet balances
+    const { data: wallets, error: walletsError } = await supabase
+      .from('wallets')
+      .select('user_id, balance');
+      
+    if (walletsError) throw walletsError;
     
-    // Transform the data to include balance
-    return data ? data.map(user => ({
+    // Create a map of user_id to balance
+    const balanceMap = (wallets || []).reduce(
+      (map, wallet) => ({ ...map, [wallet.user_id as string]: wallet.balance || 0 }), 
+      {} as Record<string, number>
+    );
+    
+    // Combine user data with balance
+    return users ? users.map(user => ({
       ...user,
-      balance: user.wallets.balance
+      balance: balanceMap[user.id] || 0
     })) : [];
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -69,17 +81,37 @@ export const subscribeUserChanges = (callback: (users: User[]) => void) => {
 };
 
 // Update user
-export const updateUser = async (id: string, userData: Partial<User>) => {
+export const updateUser = async (id: string, userData: Partial<User>): Promise<User | null> => {
   try {
     const { data, error } = await supabase
       .from('users')
       .update(userData)
       .eq('id', id)
-      .select();
+      .select()
+      .single();
       
     if (error) throw error;
     
-    return data[0];
+    // Now fetch the user's balance to return complete user data
+    const { data: wallet, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', id)
+      .single();
+      
+    if (walletError) {
+      console.error('Error fetching user wallet:', walletError);
+      // Continue without the balance data
+      return {
+        ...data,
+        balance: 0
+      };
+    }
+    
+    return {
+      ...data,
+      balance: wallet?.balance || 0
+    };
   } catch (error) {
     console.error('Error updating user:', error);
     toast({

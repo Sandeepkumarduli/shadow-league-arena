@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/auth";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -35,6 +36,8 @@ import AdminRequests from "./pages/admin/AdminRequests";
 import UpdateWinners from "./pages/admin/UpdateWinners";
 import ActivityLog from "./pages/admin/ActivityLog";
 import BigTournaments from "./pages/admin/BigTournaments";
+import AdminProfile from "./pages/admin/AdminProfile";
+import AdminAccount from "./pages/admin/AdminAccount";
 
 // Optimize the QueryClient configuration for better performance
 const queryClient = new QueryClient({
@@ -173,6 +176,8 @@ const AppRoutes = () => (
       <Route path="/admin/update-winners" element={<AdminRoute><UpdateWinners /></AdminRoute>} />
       <Route path="/admin/activity" element={<AdminRoute><ActivityLog /></AdminRoute>} />
       <Route path="/admin/big-tournaments" element={<AdminRoute><BigTournaments /></AdminRoute>} />
+      <Route path="/admin/profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
+      <Route path="/admin/account" element={<AdminRoute><AdminAccount /></AdminRoute>} />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
