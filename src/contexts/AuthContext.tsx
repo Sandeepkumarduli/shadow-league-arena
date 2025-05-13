@@ -13,7 +13,7 @@ interface AuthContextType {
   signup: (username: string, email: string, phone: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<boolean>;
-  setIsAdmin: (value: boolean) => void;
+  setIsAdmin: (value: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,7 +60,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Function to set admin status - updated to be async
+  const setAdminStatus = async (value: boolean): Promise<void> => {
+    setIsAdmin(value);
+    // Store admin status in localStorage for persistence across page reloads
+    if (value) {
+      localStorage.setItem('isAdmin', 'true');
+    } else {
+      localStorage.removeItem('isAdmin');
+    }
+    return Promise.resolve();
+  };
+
   useEffect(() => {
+    // Check for admin status in localStorage on initial load
+    const storedAdminStatus = localStorage.getItem('isAdmin') === 'true';
+    if (storedAdminStatus) {
+      setIsAdmin(true);
+    }
+    
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
@@ -71,8 +89,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (newSession?.user) {
           const adminStatus = await checkAdminStatus(newSession.user.id);
           setIsAdmin(adminStatus);
+          if (adminStatus) {
+            localStorage.setItem('isAdmin', 'true');
+          } else {
+            localStorage.removeItem('isAdmin');
+          }
         } else {
           setIsAdmin(false);
+          localStorage.removeItem('isAdmin');
         }
       }
     );
@@ -86,6 +110,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (currentSession?.user) {
         const adminStatus = await checkAdminStatus(currentSession.user.id);
         setIsAdmin(adminStatus);
+        if (adminStatus) {
+          localStorage.setItem('isAdmin', 'true');
+        }
       }
       
       setIsLoading(false);
@@ -248,7 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const value = {
-    isAuthenticated: !!user,
+    isAuthenticated: !!user || isAdmin, // Consider admin as authenticated
     user,
     session,
     isLoading,
@@ -257,7 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     resetPassword,
-    setIsAdmin,
+    setIsAdmin: setAdminStatus, // Use the new async function
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

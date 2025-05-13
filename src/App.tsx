@@ -37,7 +37,15 @@ import UpdateWinners from "./pages/admin/UpdateWinners";
 import ActivityLog from "./pages/admin/ActivityLog";
 import BigTournaments from "./pages/admin/BigTournaments";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000, // 30 seconds
+      refetchOnWindowFocus: false, // Improves performance
+    },
+  }
+});
 
 // RouteChangeListener component to handle route transitions
 const RouteChangeListener = () => {
@@ -47,10 +55,10 @@ const RouteChangeListener = () => {
   useEffect(() => {
     setIsLoading(true);
     
-    // Simulate loading delay
+    // Shorter loading delay to improve perceived performance
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 800);
+    }, 300);
     
     return () => clearTimeout(timer);
   }, [location]);
@@ -64,8 +72,12 @@ const RouteChangeListener = () => {
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -76,15 +88,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin route component that only allows admin users
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    // Check localStorage as a backup
+    const storedAdminStatus = localStorage.getItem('isAdmin') === 'true';
+    if (!storedAdminStatus) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -92,9 +112,16 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Auth redirect for the homepage
 const HomeRedirect = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />;
+  }
   
   if (isAuthenticated) {
+    if (isAdmin) {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
   

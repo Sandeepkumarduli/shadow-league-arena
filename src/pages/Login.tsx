@@ -11,14 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
-  const { login, isAuthenticated, isLoading: authLoading, setIsAdmin } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, setIsAdmin, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
   // Redirect if already authenticated
-  if (isAuthenticated) {
+  if (isAuthenticated && isAdmin) {
+    return <Navigate to="/admin" />;
+  } else if (isAuthenticated) {
     return <Navigate to="/dashboard" />;
   }
 
@@ -42,12 +44,15 @@ const Login = () => {
       // Check for hardcoded admin credentials
       if (emailOrUsername.trim() === "Sandeepkumar" && password.trim() === "12345678") {
         console.log("Admin login successful");
-        setIsAdmin(true);
+        await setIsAdmin(true); // Ensure this completes before navigation
         toast({
           title: "Admin login successful",
           description: "Welcome to the admin panel!",
         });
-        navigate("/admin");
+        // Add a slight delay to ensure state updates before navigation
+        setTimeout(() => {
+          navigate("/admin");
+        }, 100);
         setIsLoading(false);
         return;
       }
