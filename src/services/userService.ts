@@ -54,10 +54,26 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
     }
     
     // Combine user data with balance - explicitly cast to User type to avoid deep instantiation
-    return (users ? users.map(user => ({
-      ...user,
-      balance: balanceMap[user.id] || 0
-    } as User)) : []) as User[];
+    const result: User[] = [];
+    
+    if (users) {
+      for (const user of users) {
+        const userWithBalance: User = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          is_admin: user.is_admin || false,
+          bgmiid: user.bgmiid,
+          balance: balanceMap[user.id] || 0
+        };
+        result.push(userWithBalance);
+      }
+    }
+    
+    return result;
   } catch (error) {
     console.error('Error fetching users:', error);
     toast({
@@ -107,15 +123,29 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       console.error('Error fetching user wallet:', walletError);
       // Continue without the balance data
       return {
-        ...data,
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        phone: data.phone,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        is_admin: data.is_admin || false,
+        bgmiid: data.bgmiid,
         balance: 0
-      } as User;
+      };
     }
     
     return {
-      ...data,
+      id: data.id,
+      username: data.username,
+      email: data.email,
+      phone: data.phone,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_admin: data.is_admin || false,
+      bgmiid: data.bgmiid,
       balance: wallet?.balance || 0
-    } as User;
+    };
   } catch (error) {
     console.error('Error updating user:', error);
     toast({
