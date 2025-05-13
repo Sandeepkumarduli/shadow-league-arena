@@ -53,11 +53,11 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
       });
     }
     
-    // Combine user data with balance
-    return users ? users.map(user => ({
+    // Combine user data with balance - explicitly cast to User type to avoid deep instantiation
+    return (users ? users.map(user => ({
       ...user,
       balance: balanceMap[user.id] || 0
-    } as User)) : [];
+    } as User)) : []) as User[];
   } catch (error) {
     console.error('Error fetching users:', error);
     toast({
