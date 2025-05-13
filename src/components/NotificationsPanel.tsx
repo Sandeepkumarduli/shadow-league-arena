@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Bell, X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {

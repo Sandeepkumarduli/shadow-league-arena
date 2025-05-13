@@ -2,7 +2,7 @@
 import { CalendarCheck, Users, Trophy, Gamepad, Award, Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { Link } from "react-router-dom";
 
 interface TournamentCardProps {

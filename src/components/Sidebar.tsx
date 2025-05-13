@@ -1,4 +1,3 @@
-
 import { 
   Trophy, 
   LayoutDashboard, 
@@ -12,7 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 
 const Sidebar = ({ className }: { className?: string }) => {
   const { isAdmin } = useAuth();
