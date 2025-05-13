@@ -32,28 +32,28 @@ export async function fetchData<T = any>(
       join,
     } = options;
 
-    // Type safe way to build the query
-    let query = supabase
+    // Build the query with explicit typing
+    const query = supabase
       .from(tableName)
       .select(join ? `${columns}, ${join}` : columns);
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        query = query.eq(key, value);
+        query.eq(key, value);
       }
     });
 
     // Apply ordering
     if (orderBy) {
-      query = query.order(orderBy.column, {
+      query.order(orderBy.column, {
         ascending: orderBy.ascending !== false,
       });
     }
 
     // Apply limit
     if (limit) {
-      query = query.limit(limit);
+      query.limit(limit);
     }
 
     // Execute query
