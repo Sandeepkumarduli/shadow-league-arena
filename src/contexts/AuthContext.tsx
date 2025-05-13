@@ -20,11 +20,11 @@ interface AuthContextProps {
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  adminLogin: (username: string, password: string) => Promise<void>;
+  adminLogin: (username: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, username: string, phone: string, bgmiid?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
-  setIsAdmin: (value: boolean) => void; // Add this missing method
+  setIsAdmin: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
@@ -86,6 +86,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsLoading(true);
       
       try {
+        // First check for admin user in localStorage
+        const adminUser = localStorage.getItem('adminUser');
+        if (adminUser) {
+          const parsedUser = JSON.parse(adminUser);
+          setUser(parsedUser as User);
+          setIsAuthenticated(true);
+          setIsAdmin(true);
+          console.info("Admin user found in localStorage");
+          setIsLoading(false);
+          return;
+        }
+
+        // Then check for regular Supabase session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
@@ -158,7 +171,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
   
   // Function for admin login with hardcoded credentials
-  const adminLogin = async (username: string, password: string): Promise<void> => {
+  const adminLogin = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       // Hardcoded admin credentials
@@ -186,6 +199,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Admin Login Successful",
           description: "Welcome to the admin dashboard!",
         });
+        return true;
       } else {
         throw new Error("Invalid admin credentials");
       }
@@ -369,7 +383,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signup,
     logout,
     updateProfile,
-    setIsAdmin, // Add the missing setIsAdmin method to the context value
+    setIsAdmin,
   };
 
   return (

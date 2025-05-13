@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -96,20 +95,22 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const location = useLocation();
 
+  // Check localStorage for admin status (this is a backup)
+  const storedAdminStatus = localStorage.getItem('isAdmin') === 'true';
+  const storedAdminUser = localStorage.getItem('adminUser');
+
   if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
 
-  if (!isAuthenticated) {
+  // Check both context and localStorage for authentication
+  if (!isAuthenticated && !storedAdminUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!isAdmin) {
-    // Check localStorage as a backup
-    const storedAdminStatus = localStorage.getItem('isAdmin') === 'true';
-    if (!storedAdminStatus) {
-      return <Navigate to="/dashboard" replace />;
-    }
+  // Check both context and localStorage for admin status
+  if (!isAdmin && !storedAdminStatus) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
