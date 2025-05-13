@@ -7,11 +7,11 @@ export interface Team {
   owner_id?: string;
   game?: string;
   captain?: string;
-  members: number;
-  maxMembers: number;
-  tournaments: number;
-  wins: number;
-  active: boolean;
+  members?: number;
+  maxMembers?: number;
+  tournaments?: number;
+  wins?: number;
+  active?: boolean;
 }
 
 export interface TeamMember {

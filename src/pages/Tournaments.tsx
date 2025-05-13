@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +10,8 @@ import { Tournament } from "@/types/tournament";
 import { toast } from "@/hooks/use-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { subscribeTournamentChanges } from "@/services/tournamentService";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
+import { Search } from "lucide-react";
 
 export default function Tournaments() {
   const navigate = useNavigate();
@@ -46,6 +49,11 @@ export default function Tournaments() {
     tournament.game.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
   return (
     <div className="container mx-auto px-4 md:px-6 py-24">
       {/* Hero Section */}
@@ -71,6 +79,17 @@ export default function Tournaments() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="mb-6">
+        <InputWithIcon
+          placeholder="Search tournaments..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="bg-esports-dark border-esports-accent/20 text-white"
+          icon={<Search className="h-4 w-4" />}
+        />
+      </div>
+
       {/* Filters */}
       <TournamentFilters
         statusFilter={statusFilter}
@@ -79,13 +98,13 @@ export default function Tournaments() {
         gameTypes={gameTypes}
         onStatusChange={setStatusFilter}
         onGameChange={setGameFilter}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
       />
 
       {/* Tournaments Grid */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <LoadingSpinner size={40} />
+          <LoadingSpinner />
         </div>
       ) : filteredTournaments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">

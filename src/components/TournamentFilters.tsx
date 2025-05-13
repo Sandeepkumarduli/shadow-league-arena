@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Filter, Calendar } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +17,9 @@ interface TournamentFiltersProps {
   dateFilter?: Date | null;
   setDateFilter?: (value: Date | null) => void;
   showCompletedFilter?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (value: React.ChangeEvent<HTMLInputElement>) => void;
+  gameTypes?: string[];
 }
 
 // Game type options
@@ -37,7 +39,10 @@ const TournamentFilters = ({
   setGameTypeFilter,
   dateFilter = null,
   setDateFilter,
-  showCompletedFilter = true
+  showCompletedFilter = true,
+  searchQuery,
+  onSearchChange,
+  gameTypes
 }: TournamentFiltersProps) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 

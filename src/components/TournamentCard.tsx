@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { Link } from "react-router-dom";
+import { Tournament } from "@/types/tournament";
 
-interface TournamentCardProps {
+interface TournamentCardBaseProps {
   id: string;
   title: string;
   game: string;
@@ -27,25 +28,44 @@ interface TournamentCardProps {
   onDetails?: () => void;
 }
 
-const TournamentCard = ({
-  id,
-  title,
-  game,
-  date,
-  entryFee,
-  prizePool,
-  gameType,
-  participants,
-  status,
-  isRegistered = false,
-  roomId = "",
-  password = "",
-  position,
-  onJoin,
-  onDetails,
-}: TournamentCardProps) => {
+interface TournamentCardWithObjectProps {
+  tournament: Tournament;
+  isRegistered?: boolean;
+  roomId?: string;
+  password?: string;
+  position?: number;
+  onJoin?: () => void;
+  onDetails?: () => void;
+}
+
+type TournamentCardProps = TournamentCardBaseProps | TournamentCardWithObjectProps;
+
+const TournamentCard = (props: TournamentCardProps) => {
   const { isAuthenticated } = useAuth();
   
+  // Process props based on whether they're passed as an object or individually
+  const isTournamentObject = 'tournament' in props;
+  
+  const id = isTournamentObject ? props.tournament.id : props.id;
+  const title = isTournamentObject ? props.tournament.name : props.title;
+  const game = isTournamentObject ? props.tournament.game : props.game;
+  const date = isTournamentObject ? (props.tournament.start_date ? new Date(props.tournament.start_date).toLocaleDateString() : '') : props.date;
+  const entryFee = isTournamentObject ? props.tournament.entry_fee?.toString() || '0' : props.entryFee;
+  const prizePool = isTournamentObject ? props.tournament.prize_pool?.toString() || '0' : props.prizePool;
+  const status = isTournamentObject ? props.tournament.status as "upcoming" | "live" | "completed" : props.status;
+  const gameType = isTournamentObject ? "Squad" : props.gameType; // Default to Squad if not provided in tournament object
+  const participants = isTournamentObject ? {
+    current: 0, // This would need to be calculated from registrations
+    max: props.tournament.max_teams
+  } : props.participants;
+  
+  const isRegistered = isTournamentObject ? props.isRegistered : props.isRegistered || false;
+  const roomId = isTournamentObject ? props.roomId : props.roomId || '';
+  const password = isTournamentObject ? props.password : props.password || '';
+  const position = isTournamentObject ? props.position : props.position;
+  const onJoin = isTournamentObject ? props.onJoin : props.onJoin;
+  const onDetails = isTournamentObject ? props.onDetails : props.onDetails;
+
   const statusColors = {
     upcoming: "bg-amber-400/20 text-amber-400",
     live: "bg-esports-green/20 text-esports-green",

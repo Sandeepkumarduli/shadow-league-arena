@@ -57,15 +57,8 @@ const UpdateWinners = () => {
   // Fetch teams
   const fetchTeams = async () => {
     try {
-      const { data, error } = await supabase
-        .from("teams")
-        .select("*")
-        .order("name");
-
-      if (error) throw error;
-      
-      console.log("Fetched teams:", data);
-      setTeams(data || []);
+      const teamsData = await fetchAllTeams();
+      setTeams(teamsData);
     } catch (error) {
       console.error("Error fetching teams:", error);
       toast({

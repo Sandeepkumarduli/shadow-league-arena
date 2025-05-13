@@ -44,10 +44,14 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
     if (walletsError) throw walletsError;
     
     // Create a map of user_id to balance
-    const balanceMap = (wallets || []).reduce(
-      (map, wallet) => ({ ...map, [wallet.user_id as string]: wallet.balance || 0 }), 
-      {} as Record<string, number>
-    );
+    const balanceMap: Record<string, number> = {};
+    if (wallets) {
+      wallets.forEach(wallet => {
+        if (wallet.user_id) {
+          balanceMap[wallet.user_id] = wallet.balance || 0;
+        }
+      });
+    }
     
     // Combine user data with balance
     return users ? users.map(user => ({

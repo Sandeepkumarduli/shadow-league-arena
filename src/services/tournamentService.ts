@@ -175,7 +175,7 @@ export const deleteTournament = async (id: string, name: string): Promise<boolea
   }
 };
 
-// Subscribe to tournament changes - renamed from subscribeTournamentsChanges to match what's being imported
+// Subscribe to tournament changes
 export const subscribeTournamentChanges = (
   callback: (tournaments: Tournament[]) => void,
   filters?: { status?: string; game?: string }
@@ -201,7 +201,7 @@ export const subscribeTournamentChanges = (
   };
 };
 
-// Also export the original function name for backward compatibility
+// Alias for backward compatibility
 export const subscribeTournamentsChanges = subscribeTournamentChanges;
 
 // Fetch completed tournaments
@@ -235,7 +235,22 @@ export const fetchAllTeams = async (): Promise<Team[]> => {
       .order("name");
 
     if (error) throw error;
-    return data || [];
+    
+    // Ensure we return data compatible with the Team interface
+    return (data || []).map(team => ({
+      id: team.id,
+      name: team.name,
+      created_at: team.created_at,
+      updated_at: team.updated_at,
+      owner_id: team.owner_id,
+      // Default values for other properties required by Team interface
+      members: 0,
+      maxMembers: 5,
+      tournaments: 0,
+      wins: 0,
+      active: true,
+      ...team
+    }));
   } catch (error) {
     console.error("Error fetching teams:", error);
     toast({
@@ -277,13 +292,12 @@ export const updateTournamentWinners = async (
     const secondPrize = Math.floor(prizePool * 0.3);
     const thirdPrize = Math.floor(prizePool * 0.1);
 
-    // Update tournament with winner names
+    // Update tournament with winner information
     const { error: updateError } = await supabase
       .from("tournaments")
       .update({
-        winner: teamsMap[winnerId],
-        secondPlace: secondPlaceId ? teamsMap[secondPlaceId] : null,
-        thirdPlace: thirdPlaceId ? teamsMap[thirdPlaceId] : null,
+        // Use the tournament_results table instead of directly storing winners
+        status: "completed"
       })
       .eq("id", tournamentId);
 
