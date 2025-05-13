@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Users, Shield, Trash, Flag, Trophy, PlusCircle, Edit } from "lucide-react";
+import { ArrowLeft, Search, User, Users, Shield, Trash, Flag, Trophy, PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import RefreshButton from "@/components/RefreshButton";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchData } from "@/utils/data-fetcher";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   Dialog,
   DialogContent,
@@ -20,72 +24,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Sample teams data
-const initialTeams = [
-  {
-    id: "1",
-    name: "Phoenix Rising",
-    game: "BGMI",
-    members: 4,
-    maxMembers: 4,
-    captain: "FireHawk22",
-    tournaments: 12,
-    wins: 3,
-    createdAt: "2023-08-15",
-    active: true
-  },
-  {
-    id: "2",
-    name: "Valorant Vipers",
-    game: "Valorant",
-    members: 5,
-    maxMembers: 5,
-    captain: "ViperStrike",
-    tournaments: 8,
-    wins: 2,
-    createdAt: "2023-09-02",
-    active: true
-  },
-  {
-    id: "3",
-    name: "COD Warriors",
-    game: "COD",
-    members: 3,
-    maxMembers: 4,
-    captain: "SniperElite48",
-    tournaments: 5,
-    wins: 0,
-    createdAt: "2023-10-12",
-    active: true
-  },
-  {
-    id: "4",
-    name: "FreeFire Foxes",
-    game: "FreeFire",
-    members: 4,
-    maxMembers: 4,
-    captain: "FoxHunter",
-    tournaments: 6,
-    wins: 1,
-    createdAt: "2023-12-05",
-    active: false
-  }
-];
+interface Team {
+  id: string;
+  name: string;
+  game?: string;
+  created_at: string;
+  active?: boolean;
+  captain?: string;
+}
 
-// Team members for a specific team (would be fetched based on team ID in a real app)
-const teamMembers = [
-  { id: "1", name: "FireHawk22", role: "Captain", joined: "2023-08-15" },
-  { id: "2", name: "BlazeDragon", role: "Member", joined: "2023-08-16" },
-  { id: "3", name: "StormRider", role: "Member", joined: "2023-08-18" },
-  { id: "4", name: "ThunderBolt", role: "Member", joined: "2023-08-20" }
-];
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  joined: string;
+}
 
 const AdminTeams = () => {
   const navigate = useNavigate();
-  const [teams, setTeams] = useState(initialTeams);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
   
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -99,6 +61,169 @@ const AdminTeams = () => {
   const [newTeamCaptain, setNewTeamCaptain] = useState("");
   const [newTeamMaxMembers, setNewTeamMaxMembers] = useState("4");
   
+  // Fetch teams data from Supabase
+  const fetchTeams = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchData<Team[]>('teams', {
+        columns: 'id, name, created_at, owner_id'
+      });
+      
+      // Add some extra properties for UI
+      const teamsWithMeta = await Promise.all(data.map(async (team) => {
+        // Get team captain (owner)
+        let captainName = "Unknown";
+        if (team.owner_id) {
+          const owner = await fetchData('users', {
+            columns: 'username',
+            filters: { id: team.owner_id },
+            single: true
+          });
+          
+          if (owner) {
+            captainName = owner.username;
+          }
+        }
+        
+        // Count team members
+        const { data: membersData, error: membersError } = await supabase
+          .from('team_members')
+          .select('count', { count: 'exact' })
+          .eq('team_id', team.id);
+        
+        const membersCount = !membersError ? membersData || 0 : 0;
+        
+        // Count tournaments participated
+        const { data: tournamentsData, error: tournamentsError } = await supabase
+          .from('tournament_registrations')
+          .select('count', { count: 'exact' })
+          .eq('team_id', team.id);
+        
+        const tournamentsCount = !tournamentsError ? tournamentsData || 0 : 0;
+        
+        // Count wins (tournament results where position = 1)
+        const { data: winsData, error: winsError } = await supabase
+          .from('tournament_results')
+          .select('count', { count: 'exact' })
+          .eq('team_id', team.id)
+          .eq('position', 1);
+        
+        const winsCount = !winsError ? winsData || 0 : 0;
+        
+        return {
+          ...team,
+          game: team.game || "BGMI", // Default game if not set
+          captain: captainName,
+          members: membersCount,
+          maxMembers: 4, // Default max members
+          tournaments: tournamentsCount,
+          wins: winsCount,
+          active: true // Default active status
+        };
+      }));
+      
+      setTeams(teamsWithMeta);
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+      toast({
+        title: "Error loading teams",
+        description: "There was a problem loading the teams data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Fetch team members for a specific team
+  const fetchTeamMembers = async (teamId: string) => {
+    try {
+      // Get team members
+      const { data: memberIds, error } = await supabase
+        .from('team_members')
+        .select('user_id')
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      
+      // Get user details for each member
+      const members = await Promise.all(memberIds.map(async (item) => {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, username, created_at')
+          .eq('id', item.user_id)
+          .single();
+        
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          return null;
+        }
+        
+        // Determine if user is captain (team owner)
+        const { data: team } = await supabase
+          .from('teams')
+          .select('owner_id')
+          .eq('id', teamId)
+          .single();
+        
+        const role = team && team.owner_id === userData.id ? "Captain" : "Member";
+        
+        return {
+          id: userData.id,
+          name: userData.username,
+          role: role,
+          joined: new Date(userData.created_at).toISOString().split('T')[0]
+        };
+      }));
+      
+      // Filter out null values (from errors)
+      const validMembers = members.filter(member => member !== null) as TeamMember[];
+      setTeamMembers(validMembers);
+      
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      toast({
+        title: "Error",
+        description: "Could not load team members",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchTeams();
+    
+    // Setup real-time subscriptions
+    const teamChannel = supabase
+      .channel('public:teams')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'teams' },
+        () => {
+          fetchTeams();
+        }
+      )
+      .subscribe();
+      
+    const membersChannel = supabase
+      .channel('public:team_members')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'team_members' },
+        () => {
+          if (selectedTeam) {
+            fetchTeamMembers(selectedTeam);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(teamChannel);
+      supabase.removeChannel(membersChannel);
+    };
+  }, []);
+
   // Filter teams based on selections
   const filteredTeams = teams.filter(team => {
     // Apply game filter
@@ -117,6 +242,7 @@ const AdminTeams = () => {
 
   const handleViewTeam = (teamId: string) => {
     setSelectedTeam(teamId);
+    fetchTeamMembers(teamId);
     setIsTeamDetailsOpen(true);
   };
   
@@ -125,44 +251,71 @@ const AdminTeams = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!teamToDelete) return;
     
-    const updatedTeams = teams.filter(team => team.id !== teamToDelete);
-    setTeams(updatedTeams);
-    
-    toast({
-      title: "Team Removed",
-      description: "The team has been successfully removed.",
-    });
-    
-    setIsDeleteDialogOpen(false);
-    setTeamToDelete(null);
+    try {
+      // First delete team members
+      await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', teamToDelete);
+      
+      // Then delete the team
+      await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamToDelete);
+      
+      toast({
+        title: "Team Removed",
+        description: "The team has been successfully removed.",
+      });
+      
+      // Update local state
+      setTeams(teams.filter(team => team.id !== teamToDelete));
+      
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete team",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setTeamToDelete(null);
+    }
   };
   
-  const handleBanTeam = (teamId: string) => {
-    // Toggle team active status
-    const updatedTeams = teams.map(team => {
-      if (team.id === teamId) {
-        const newStatus = !team.active;
-        
-        toast({
-          title: newStatus ? "Team Unbanned" : "Team Banned",
-          description: `Team ${team.name} has been ${newStatus ? 'unbanned' : 'banned'}.`,
-        });
-        
-        return {
-          ...team,
-          active: newStatus
-        };
-      }
-      return team;
-    });
+  const handleBanTeam = async (teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
     
-    setTeams(updatedTeams);
+    const newStatus = !team.active;
+    
+    try {
+      // In a real app, you would update the active status in the database
+      // Since there's no active column currently, this is just updating UI
+      setTeams(teams.map(t => 
+        t.id === teamId ? { ...t, active: newStatus } : t
+      ));
+      
+      toast({
+        title: newStatus ? "Team Unbanned" : "Team Banned",
+        description: `Team ${team.name} has been ${newStatus ? 'unbanned' : 'banned'}.`,
+      });
+    } catch (error) {
+      console.error("Error updating team status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update team status",
+        variant: "destructive",
+      });
+    }
   };
   
-  const handleCreateTeam = () => {
+  const handleCreateTeam = async () => {
     // Validation
     if (!newTeamName.trim()) {
       toast({
@@ -191,33 +344,67 @@ const AdminTeams = () => {
       return;
     }
     
-    // Create new team
-    const newTeam = {
-      id: (teams.length + 1).toString(),
-      name: newTeamName,
-      game: newTeamGame,
-      members: 1, // Starting with just the captain
-      maxMembers: parseInt(newTeamMaxMembers),
-      captain: newTeamCaptain,
-      tournaments: 0,
-      wins: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-      active: true
-    };
-    
-    setTeams([...teams, newTeam]);
-    
-    toast({
-      title: "Team Created",
-      description: `Team "${newTeamName}" has been successfully created.`,
-    });
-    
-    // Reset form and close dialog
-    setNewTeamName("");
-    setNewTeamGame("");
-    setNewTeamCaptain("");
-    setNewTeamMaxMembers("4");
-    setIsCreateTeamDialogOpen(false);
+    try {
+      // First check if captain exists by username
+      const { data: captainData, error: captainError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', newTeamCaptain.trim())
+        .single();
+      
+      if (captainError || !captainData) {
+        toast({
+          title: "Captain Not Found",
+          description: "The captain username was not found in the system.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create new team
+      const { data: newTeam, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          name: newTeamName.trim(),
+          owner_id: captainData.id,
+          // game: newTeamGame // Uncomment if game column exists
+        })
+        .select()
+        .single();
+      
+      if (teamError) throw teamError;
+      
+      // Add captain as team member
+      await supabase
+        .from('team_members')
+        .insert({
+          team_id: newTeam.id,
+          user_id: captainData.id
+        });
+      
+      toast({
+        title: "Team Created",
+        description: `Team "${newTeamName}" has been successfully created.`,
+      });
+      
+      // Reset form and close dialog
+      setNewTeamName("");
+      setNewTeamGame("");
+      setNewTeamCaptain("");
+      setNewTeamMaxMembers("4");
+      setIsCreateTeamDialogOpen(false);
+      
+      // Refresh teams list
+      fetchTeams();
+      
+    } catch (error) {
+      console.error("Error creating team:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create team",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -236,13 +423,16 @@ const AdminTeams = () => {
           <h1 className="text-2xl font-bold text-white">Manage Teams</h1>
         </div>
         
-        <Button
-          onClick={() => setIsCreateTeamDialogOpen(true)}
-          className="bg-esports-accent hover:bg-esports-accent/80 text-white"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Team
-        </Button>
+        <div className="flex gap-2">
+          <RefreshButton onRefresh={fetchTeams} />
+          <Button
+            onClick={() => setIsCreateTeamDialogOpen(true)}
+            className="bg-esports-accent hover:bg-esports-accent/80 text-white"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Team
+          </Button>
+        </div>
       </div>
       
       {/* Filters */}
@@ -292,7 +482,11 @@ const AdminTeams = () => {
       
       {/* Teams List */}
       <div className="space-y-4">
-        {filteredTeams.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : filteredTeams.length > 0 ? (
           filteredTeams.map((team) => (
             <Card key={team.id} className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-5">
@@ -465,35 +659,44 @@ const AdminTeams = () => {
       <Dialog open={isTeamDetailsOpen} onOpenChange={setIsTeamDetailsOpen}>
         <DialogContent className="bg-esports-dark text-white border-esports-accent/20 max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl">Phoenix Rising</DialogTitle>
+            <DialogTitle className="text-xl">{teams.find(t => t.id === selectedTeam)?.name || "Team Details"}</DialogTitle>
             <DialogDescription className="text-gray-400 flex items-center gap-2">
               <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                BGMI
+                {teams.find(t => t.id === selectedTeam)?.game || "Unknown Game"}
               </Badge>
-              <span>Created on August 15, 2023</span>
+              <span>Created on {teams.find(t => t.id === selectedTeam)?.created_at ? 
+                new Date(teams.find(t => t.id === selectedTeam)?.created_at || "").toLocaleDateString() : 
+                "Unknown Date"}
+              </span>
             </DialogDescription>
           </DialogHeader>
           
           <div className="mt-4">
             <h4 className="text-lg font-semibold mb-2">Team Members</h4>
-            <div className="space-y-2">
-              {teamMembers.map(member => (
-                <div key={member.id} className="flex justify-between items-center p-3 bg-esports-darker rounded-md">
-                  <div className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-esports-accent" />
+            {teamMembers.length > 0 ? (
+              <div className="space-y-2">
+                {teamMembers.map(member => (
+                  <div key={member.id} className="flex justify-between items-center p-3 bg-esports-darker rounded-md">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-esports-accent" />
+                      <div>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-xs text-gray-400">Joined: {member.joined}</p>
+                      </div>
+                    </div>
                     <div>
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-xs text-gray-400">Joined: {member.joined}</p>
+                      <Badge variant={member.role === "Captain" ? "default" : "outline"} className={member.role === "Captain" ? "bg-esports-accent/20 text-esports-accent border-none" : "bg-esports-dark text-white border-esports-accent/30"}>
+                        {member.role}
+                      </Badge>
                     </div>
                   </div>
-                  <div>
-                    <Badge variant={member.role === "Captain" ? "default" : "outline"} className={member.role === "Captain" ? "bg-esports-accent/20 text-esports-accent border-none" : "bg-esports-dark text-white border-esports-accent/30"}>
-                      {member.role}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-400">No team members found.</p>
+              </div>
+            )}
           </div>
           
           <DialogFooter>

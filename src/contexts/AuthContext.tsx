@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -121,14 +122,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth event:", event);
         if (session?.user) {
           await setUserData(session.user as User);
           console.info("Auth state changed, new session: true");
-        } else {
+        } else if (event === 'SIGNED_OUT') {
+          console.info("User signed out, clearing auth state");
           setUser(null);
           setIsAuthenticated(false);
           setIsAdmin(false);
           localStorage.removeItem('isAdmin');
+          localStorage.removeItem('adminUser');
         }
       }
     );

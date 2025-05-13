@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
@@ -49,7 +50,6 @@ const Login = () => {
           description: "Welcome to the admin panel!",
         });
         navigate("/admin");
-        setIsLoading(false);
         return;
       }
       
