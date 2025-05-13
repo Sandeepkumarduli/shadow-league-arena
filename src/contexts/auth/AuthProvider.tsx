@@ -74,6 +74,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Add admin login function for backward compatibility
+  const adminLogin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      
+      // Check if user is admin after login
+      const userData = await fetchCurrentUser();
+      if (!userData?.is_admin) {
+        toast({
+          title: 'Access denied',
+          description: 'You do not have admin privileges',
+          variant: 'destructive',
+        });
+        await supabase.auth.signOut(); // Sign out if not admin
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      toast({
+        title: 'Admin login failed',
+        description: error.message || 'Could not log in',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   const signup = async (email: string, password: string, username: string, phone: string) => {
     try {
       const { error } = await supabase.auth.signUp({
@@ -127,9 +156,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         user,
         session,
         loading,
+        isLoading: loading, // For backward compatibility
         login,
         signup,
         logout,
+        adminLogin, // Added adminLogin
       }}
     >
       {children}

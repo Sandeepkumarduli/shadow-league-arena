@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import AdminLayout from "@/components/AdminLayout";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import RefreshButton from "@/components/RefreshButton";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { fetchUsers, User } from "@/services/userService";
-import GiveCoinsDialog from "@/components/admin/GiveCoinsDialog";
-import DeductCoinsDialog from "@/components/admin/DeductCoinsDialog";
+import { GiveCoinsDialog } from "@/components/admin/GiveCoinsDialog";
+import { DeductCoinsDialog } from "@/components/admin/DeductCoinsDialog";
 import { fetchAdminWallet } from "@/services/adminWalletService";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -188,24 +188,30 @@ const AdminCoins = () => {
         ))}
       </div>
 
-      <GiveCoinsDialog
-        isOpen={isGiveDialogOpen}
-        onOpenChange={setIsGiveDialogOpen}
-        user={selectedUser}
-        onSuccess={async () => {
-          await fetchAdminWalletBalance();
-          await fetchUserList();
-        }}
-      />
-      <DeductCoinsDialog
-        isOpen={isDeductDialogOpen}
-        onOpenChange={setIsDeductDialogOpen}
-        user={selectedUser}
-        onSuccess={async () => {
-          await fetchAdminWalletBalance();
-          await fetchUserList();
-        }}
-      />
+      {selectedUser && (
+        <>
+          <GiveCoinsDialog
+            isOpen={isGiveDialogOpen}
+            onOpenChange={setIsGiveDialogOpen}
+            userId={selectedUser.id}
+            username={selectedUser.username}
+            onTransactionComplete={() => {
+              fetchAdminWalletBalance();
+              fetchUserList();
+            }}
+          />
+          <DeductCoinsDialog
+            isOpen={isDeductDialogOpen}
+            onOpenChange={setIsDeductDialogOpen}
+            userId={selectedUser.id}
+            username={selectedUser.username}
+            onTransactionComplete={() => {
+              fetchAdminWalletBalance();
+              fetchUserList();
+            }}
+          />
+        </>
+      )}
     </AdminLayout>
   );
 };

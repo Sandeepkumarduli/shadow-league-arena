@@ -1,254 +1,159 @@
-import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import { Trophy } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/hooks/use-toast";
 
-const Signup = () => {
-  const { signup, isAuthenticated, isLoading: authLoading } = useAuth();
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/auth';
+import { toast } from '@/hooks/use-toast';
+
+export default function Signup() {
   const navigate = useNavigate();
-  
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: ""
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
-  }
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const validateForm = () => {
-    // Check if all fields are filled
-    for (const [key, value] of Object.entries(formData)) {
-      if (!value.trim()) {
-        toast({
-          title: "Missing information",
-          description: `Please fill in your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`,
-          variant: "destructive",
-        });
-        return false;
-      }
-    }
-    
-    // Check if passwords match
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords match",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    // Check password strength
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(formData.password)) {
-      toast({
-        title: "Password is too weak",
-        description: "Password must be at least 8 characters long, contain 1 number and 1 uppercase letter",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    // Phone number validation - allowing various formats
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      toast({
-        title: "Invalid phone number",
-        description: "Please enter a valid phone number with at least 10 digits",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
-  };
-  
+  const { signup, isLoading } = useAuth();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!username || !email || !password || !confirmPassword || !phone) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please ensure both passwords match.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    setIsLoading(true);
-    
-    // Trim all form fields to prevent whitespace issues
-    const trimmedData = {
-      username: formData.username.trim(),
-      email: formData.email.trim(),
-      phone: formData.phone.trim(),
-      password: formData.password
-    };
+    setIsSubmitting(true);
     
     try {
-      console.log("Attempting signup with:", trimmedData.username, trimmedData.email, trimmedData.phone);
-      const success = await signup(
-        trimmedData.email, 
-        trimmedData.password, 
-        trimmedData.username, 
-        trimmedData.phone
-      );
-      
-      if (success) {
-        console.log("Signup successful");
-        toast({
-          title: "Account created",
-          description: "Welcome to NexusArena! You've been signed up successfully.",
-        });
-        navigate("/dashboard");
-      } else {
-        console.log("Signup returned false");
-        toast({
-          title: "Signup failed",
-          description: "Could not create account. Please try again.",
-          variant: "destructive",
-        });
-      }
+      await signup(email, password, username, phone);
+      navigate('/login');
     } catch (error) {
+      // Error is already handled in the signup function
       console.error("Signup error:", error);
-      toast({
-        title: "Signup failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
   
   return (
-    <div className="min-h-screen bg-esports-darker flex flex-col items-center justify-center p-4">
-      <div className="mb-8">
-        <Link to="/" className="flex items-center gap-2">
-          <Trophy className="h-8 w-8 text-esports-accent" />
-          <span className="text-2xl font-bold font-rajdhani text-white tracking-wider">
-            NEXUS<span className="text-esports-accent">ARENA</span>
-          </span>
-        </Link>
-      </div>
-      
-      <Card className="w-full max-w-md bg-esports-dark border-esports-accent/20">
-        <CardHeader>
-          <CardTitle className="text-white text-xl">Create an account</CardTitle>
-          <CardDescription>Join the NexusArena community</CardDescription>
-        </CardHeader>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-6 py-12">
+        <div className="flex flex-col space-y-2 text-center">
+          <h1 className="text-3xl font-bold text-white">Create an Account</h1>
+          <p className="text-gray-400">Enter your details to create your account</p>
+        </div>
         
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input 
-                id="username"
-                name="username"
-                type="text" 
-                placeholder="Your username" 
-                value={formData.username}
-                onChange={handleChange}
-                className="bg-esports-darker border-esports-accent/30"
-                required
-                autoComplete="off"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email"
-                name="email"
-                type="email" 
-                placeholder="youremail@example.com" 
-                value={formData.email}
-                onChange={handleChange}
-                className="bg-esports-darker border-esports-accent/30"
-                required
-                autoComplete="off"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input 
-                id="phone"
-                name="phone"
-                type="tel" 
-                placeholder="1234567890" 
-                value={formData.phone}
-                onChange={handleChange}
-                className="bg-esports-darker border-esports-accent/30"
-                required
-                autoComplete="off"
-              />
-              <p className="text-xs text-gray-400">Enter a phone number with at least 10 digits</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password"
-                name="password"
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.password}
-                onChange={handleChange}
-                className="bg-esports-darker border-esports-accent/30"
-                required
-                autoComplete="off"
-              />
-              <p className="text-xs text-gray-400">
-                Password must be at least 8 characters long, contain 1 number and 1 uppercase letter
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input 
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="bg-esports-darker border-esports-accent/30"
-                required
-                autoComplete="off"
-              />
-            </div>
-          </CardContent>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="username">
+              Username
+            </label>
+            <Input
+              id="username"
+              placeholder="YourGamertag"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="email">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="phone">
+              Phone Number
+            </label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="+1234567890"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
           
-          <CardFooter className="flex flex-col gap-4">
-            <Button 
-              type="submit" 
-              className="w-full bg-esports-accent hover:bg-esports-accent-hover text-white" 
-              disabled={isLoading || authLoading}
-            >
-              {isLoading ? "Creating account..." : "Create account"}
-            </Button>
-            
-            <div className="text-sm text-center text-gray-400">
-              Already have an account?{' '}
-              <Link to="/login" className="text-esports-accent hover:underline">
-                Log in
-              </Link>
-            </div>
-          </CardFooter>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="password">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="confirmPassword">
+              Confirm Password
+            </label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
+          
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating account..." : "Create Account"}
+          </Button>
         </form>
-      </Card>
+        
+        <div className="text-center text-sm">
+          <span className="text-gray-400">Already have an account?</span>{" "}
+          <Link to="/login" className="text-primary hover:underline">
+            Sign in
+          </Link>
+        </div>
+      </div>
     </div>
   );
-};
-
-export default Signup;
+}
