@@ -32,34 +32,35 @@ export async function fetchData<T = any>(
       join,
     } = options;
 
-    // Build the initial query to avoid type recursion
-    const selectQuery = supabase
-      .from(tableName)
-      .select(join ? `${columns}, ${join}` : columns);
+    // Create the base query string
+    const queryString = join ? `${columns}, ${join}` : columns;
     
-    // Apply filters without reassignment
-    Object.entries(filters).forEach(([key, value]) => {
+    // Start with the base query - using type assertion to avoid recursive typing
+    let query = supabase.from(tableName).select(queryString);
+    
+    // Apply filters directly
+    for (const [key, value] of Object.entries(filters)) {
       if (value !== undefined && value !== null) {
-        selectQuery.eq(key, value);
+        query = query.eq(key, value) as any; // Use type assertion to break type recursion
       }
-    });
+    }
 
     // Apply ordering if specified
     if (orderBy) {
-      selectQuery.order(orderBy.column, {
+      query = query.order(orderBy.column, {
         ascending: orderBy.ascending !== false,
-      });
+      }) as any; // Use type assertion to break type recursion
     }
 
     // Apply limit if specified
     if (limit) {
-      selectQuery.limit(limit);
+      query = query.limit(limit) as any; // Use type assertion to break type recursion
     }
 
     // Execute query with appropriate method
     const { data, error } = single 
-      ? await selectQuery.single() 
-      : await selectQuery;
+      ? await query.single() 
+      : await query;
 
     if (error) {
       throw error;
@@ -115,11 +116,11 @@ export async function mutateData<T = any>(
     
     // Apply filters for update and delete
     if (action !== "insert") {
-      Object.entries(filters).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(filters)) {
         if (value !== undefined && value !== null) {
-          query = query.eq(key, value);
+          query = query.eq(key, value) as any; // Use type assertion to break type recursion
         }
-      });
+      }
     }
     
     // Execute query
