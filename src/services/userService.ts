@@ -27,7 +27,8 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          query = query.eq(key, value);
+          // Use type assertion to help TypeScript
+          (query as any).eq(key, value);
         }
       });
     }

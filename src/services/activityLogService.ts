@@ -14,6 +14,23 @@ export interface ActivityLog {
   username?: string;
 }
 
+// Interface for user data returned with activity logs
+interface UserData {
+  username: string;
+}
+
+// Activity log data with joined user data
+interface ActivityLogWithUser {
+  id: string;
+  type: string;
+  action: string;
+  details: string;
+  user_id?: string;
+  created_at: string;
+  metadata?: any;
+  users?: UserData | null;
+}
+
 // Fetch activity logs with optional filters
 export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<ActivityLog[]> => {
   try {
@@ -21,7 +38,7 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
       .from('activity_logs')
       .select(`
         *,
-        users (username)
+        users:user_id (username)
       `)
       .order('created_at', { ascending: false });
     
@@ -43,7 +60,7 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
     if (error) throw error;
     
     // Transform the data to include the username from the nested users object
-    return data ? data.map(log => ({
+    return data ? data.map((log: ActivityLogWithUser) => ({
       ...log,
       username: log.users?.username,
       users: undefined // Remove the nested users object

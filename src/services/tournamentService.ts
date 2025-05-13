@@ -16,7 +16,8 @@ export const fetchTournaments = async (filters?: Record<string, any>): Promise<T
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          query = query.eq(key, value);
+          // Use type assertion to help TypeScript
+          (query as any).eq(key, value);
         }
       });
     }
@@ -81,6 +82,17 @@ export const fetchCompletedTournaments = async (): Promise<Tournament[]> => {
   }
 };
 
+// Define parameter types for rpc functions
+interface UpdateTournamentWinnersParams {
+  tournament_id: string;
+  winner_id: string;
+  second_place_id: string | null;
+  third_place_id: string | null;
+  first_prize: number;
+  second_prize: number;
+  third_prize: number;
+}
+
 // Update tournament winners and distribute prizes
 export const updateTournamentWinners = async (
   tournamentId: string, 
@@ -98,8 +110,8 @@ export const updateTournamentWinners = async (
     const secondPlacePrize = secondPlaceId ? Math.floor(prizePool * 0.3) : 0; // 30% for second place
     const thirdPlacePrize = thirdPlaceId ? Math.floor(prizePool * 0.1) : 0; // 10% for third place
     
-    // Start a transaction
-    const { error: tournamentError } = await supabase.rpc('update_tournament_winners', {
+    // Prepare parameters
+    const params: UpdateTournamentWinnersParams = {
       tournament_id: tournamentId,
       winner_id: winnerId,
       second_place_id: secondPlaceId || null,
@@ -107,9 +119,12 @@ export const updateTournamentWinners = async (
       first_prize: firstPlacePrize,
       second_prize: secondPlacePrize,
       third_prize: thirdPlacePrize
-    });
+    };
     
-    if (tournamentError) throw tournamentError;
+    // Start a transaction
+    const { error } = await supabase.rpc('update_tournament_winners', params);
+    
+    if (error) throw error;
     
     return true;
   } catch (error) {
