@@ -18,6 +18,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Form schema with validation
 const profileSchema = z.object({
@@ -57,7 +58,8 @@ interface UserData {
 }
 
 const Profile = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState<UserData>({
     username: "",
     email: "",
@@ -67,13 +69,26 @@ const Profile = () => {
   
   const { user } = useAuth();
 
+  // Default values for the form
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      phoneNumber: "",
+      bgmiId: "",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    }
+  });
+
   // Fetch user data from database
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
       
       try {
-        // Note the column name change from bgmiId to bgmiid (lowercase)
+        console.log("Fetching user data for ID:", user.id);
+        
         const { data, error } = await supabase
           .from('users')
           .select('username, email, phone, bgmiid')
@@ -87,6 +102,7 @@ const Profile = () => {
             description: "Failed to load user data. Please try again later.",
             variant: "destructive"
           });
+          setIsLoading(false);
           return;
         }
         
@@ -97,8 +113,11 @@ const Profile = () => {
             description: "User data not found.",
             variant: "destructive"
           });
+          setIsLoading(false);
           return;
         }
+        
+        console.log("User data fetched:", data);
         
         // Ensure we have valid data and map bgmiid to bgmiId for consistency in our code
         const userDataObj: UserData = {
@@ -113,6 +132,8 @@ const Profile = () => {
         // Update form with fetched data
         form.setValue("phoneNumber", userDataObj.phone);
         form.setValue("bgmiId", userDataObj.bgmiId || "");
+
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
         toast({
@@ -120,30 +141,21 @@ const Profile = () => {
           description: "Failed to load user data. Please try again later.",
           variant: "destructive"
         });
+        setIsLoading(false);
       }
     };
     
     fetchUserData();
-  }, [user]);
-
-  // Default values for the form
-  const defaultValues: ProfileFormValues = {
-    phoneNumber: "",
-    bgmiId: "",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  };
-
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues,
-  });
+  }, [user, form]);
 
   const onSubmit = async (data: ProfileFormValues) => {
-    setIsLoading(true);
+    if (!user) return;
+    
+    setIsSubmitting(true);
     
     try {
+      console.log("Updating profile with data:", data);
+      
       // Update user phone and bgmiId in the database - use lowercase bgmiid for the DB
       const { error: updateError } = await supabase
         .from('users')
@@ -151,17 +163,45 @@ const Profile = () => {
           phone: data.phoneNumber,
           bgmiid: data.bgmiId // Note the lowercase 'id' here
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        throw updateError;
+      }
       
       // Handle password change if requested
       if (data.currentPassword && data.newPassword) {
+        console.log("Attempting to update password");
+        
+        // First verify current password
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email || "",
+          password: data.currentPassword
+        });
+        
+        if (signInError) {
+          console.error("Current password verification failed:", signInError);
+          toast({
+            title: "Error",
+            description: "Current password is incorrect.",
+            variant: "destructive"
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Update password
         const { error: passwordError } = await supabase.auth.updateUser({
           password: data.newPassword,
         });
         
-        if (passwordError) throw passwordError;
+        if (passwordError) {
+          console.error("Password update error:", passwordError);
+          throw passwordError;
+        }
+        
+        console.log("Password updated successfully");
       }
       
       toast({
@@ -183,7 +223,7 @@ const Profile = () => {
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -205,16 +245,24 @@ const Profile = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-white mb-1">Username</label>
-                <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
-                  {userData.username}
-                </div>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-full bg-esports-dark/50" />
+                ) : (
+                  <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
+                    {userData.username}
+                  </div>
+                )}
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-white mb-1">Email</label>
-                <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
-                  {userData.email}
-                </div>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-full bg-esports-dark/50" />
+                ) : (
+                  <div className="p-2 bg-esports-dark/50 border border-esports-accent/20 rounded-md text-gray-300">
+                    {userData.email}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -233,11 +281,15 @@ const Profile = () => {
                     <FormItem>
                       <FormLabel className="text-white">Phone Number *</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter your phone number" 
-                          {...field} 
-                          className="bg-esports-dark border-esports-accent/30 text-white"
-                        />
+                        {isLoading ? (
+                          <Skeleton className="h-9 w-full bg-esports-dark/50" />
+                        ) : (
+                          <Input 
+                            placeholder="Enter your phone number" 
+                            {...field} 
+                            className="bg-esports-dark border-esports-accent/30 text-white"
+                          />
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -251,11 +303,15 @@ const Profile = () => {
                     <FormItem>
                       <FormLabel className="text-white">BGMI ID *</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter your BGMI ID" 
-                          {...field} 
-                          className="bg-esports-dark border-esports-accent/30 text-white"
-                        />
+                        {isLoading ? (
+                          <Skeleton className="h-9 w-full bg-esports-dark/50" />
+                        ) : (
+                          <Input 
+                            placeholder="Enter your BGMI ID" 
+                            {...field} 
+                            className="bg-esports-dark border-esports-accent/30 text-white"
+                          />
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -333,9 +389,9 @@ const Profile = () => {
                 <Button 
                   type="submit" 
                   className="bg-esports-accent hover:bg-esports-accent-hover text-white w-full sm:w-auto"
-                  disabled={isLoading}
+                  disabled={isLoading || isSubmitting}
                 >
-                  {isLoading ? "Updating..." : "Update Profile"}
+                  {isSubmitting ? "Updating..." : "Update Profile"}
                 </Button>
               </div>
             </form>
