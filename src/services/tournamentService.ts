@@ -25,7 +25,7 @@ export const fetchTournaments = async (filters?: Record<string, any>): Promise<T
     
     if (error) throw error;
     
-    return data as Tournament[];
+    return data || [];
   } catch (error) {
     console.error('Error fetching tournaments:', error);
     toast({

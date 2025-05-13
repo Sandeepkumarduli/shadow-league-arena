@@ -1,4 +1,3 @@
-
 import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -38,7 +37,7 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
     
     if (error) throw error;
     
-    return data as unknown as ActivityLog[];
+    return data || [];
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     toast({

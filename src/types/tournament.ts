@@ -11,4 +11,5 @@ export interface Tournament {
   secondPlace?: string;
   thirdPlace?: string;
   start_date: string;
+  entry_fee?: number;
 }
