@@ -12,6 +12,7 @@ export interface User {
   updated_at: string;
   is_admin: boolean;
   bgmiid?: string;
+  balance: number; // Added balance field
 }
 
 // Fetch users with optional filters
@@ -19,7 +20,7 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
   try {
     let query = supabase
       .from('users')
-      .select('*')
+      .select('*, wallets!inner(balance)')
       .order('created_at', { ascending: false });
     
     // Apply filters if provided
@@ -35,7 +36,11 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
     
     if (error) throw error;
     
-    return data as User[];
+    // Transform the data to include balance
+    return data ? data.map(user => ({
+      ...user,
+      balance: user.wallets.balance
+    })) : [];
   } catch (error) {
     console.error('Error fetching users:', error);
     toast({

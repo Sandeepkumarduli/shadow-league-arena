@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -18,7 +19,7 @@ export const fetchAdminWallet = async (): Promise<AdminWallet | null> => {
     
     if (error) throw error;
     
-    return data;
+    return data as AdminWallet;
   } catch (error) {
     console.error('Error fetching admin wallet:', error);
     toast({

@@ -1,4 +1,4 @@
-// Fix the import to avoid duplicate User identifier
+
 import { useState, useEffect } from "react";
 import { PlusCircle, MinusCircle, Search, Users as UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,27 +7,19 @@ import AdminLayout from "@/components/AdminLayout";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import RefreshButton from "@/components/RefreshButton";
 import { toast } from "@/hooks/use-toast";
-import { fetchUsers } from "@/services/userService";
+import { fetchUsers, User } from "@/services/userService";
 import GiveCoinsDialog from "@/components/admin/GiveCoinsDialog";
 import DeductCoinsDialog from "@/components/admin/DeductCoinsDialog";
 import { fetchAdminWallet } from "@/services/adminWalletService";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define UserProfile interface to avoid namespace clash
-interface UserProfile {
-  id: string;
-  username: string;
-  email: string;
-  balance: number;
-}
-
 const AdminCoins = () => {
   const [adminBalance, setAdminBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isGiveDialogOpen, setIsGiveDialogOpen] = useState<boolean>(false);
   const [isDeductDialogOpen, setIsDeductDialogOpen] = useState<boolean>(false);
 
@@ -116,12 +108,12 @@ const AdminCoins = () => {
     setFilteredUsers(results);
   }, [searchQuery, users]);
 
-  const handleGiveCoinsClick = (user: UserProfile) => {
+  const handleGiveCoinsClick = (user: User) => {
     setSelectedUser(user);
     setIsGiveDialogOpen(true);
   };
 
-  const handleDeductCoinsClick = (user: UserProfile) => {
+  const handleDeductCoinsClick = (user: User) => {
     setSelectedUser(user);
     setIsDeductDialogOpen(true);
   };
@@ -130,9 +122,9 @@ const AdminCoins = () => {
     <AdminLayout>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">Manage Coins</h1>
-        <RefreshButton onRefresh={() => {
-          fetchAdminWalletBalance();
-          fetchUserList();
+        <RefreshButton onRefresh={async () => {
+          await fetchAdminWalletBalance();
+          await fetchUserList();
         }} />
       </div>
 
@@ -200,18 +192,18 @@ const AdminCoins = () => {
         isOpen={isGiveDialogOpen}
         onOpenChange={setIsGiveDialogOpen}
         user={selectedUser}
-        onSuccess={() => {
-          fetchAdminWalletBalance();
-          fetchUserList();
+        onSuccess={async () => {
+          await fetchAdminWalletBalance();
+          await fetchUserList();
         }}
       />
       <DeductCoinsDialog
         isOpen={isDeductDialogOpen}
         onOpenChange={setIsDeductDialogOpen}
         user={selectedUser}
-        onSuccess={() => {
-          fetchAdminWalletBalance();
-          fetchUserList();
+        onSuccess={async () => {
+          await fetchAdminWalletBalance();
+          await fetchUserList();
         }}
       />
     </AdminLayout>

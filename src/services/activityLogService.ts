@@ -1,3 +1,4 @@
+
 import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -9,7 +10,8 @@ export interface ActivityLog {
   details: string;
   user_id?: string;
   created_at: string;
-  metadata?: Record<string, any>;
+  metadata?: any;
+  username?: string;
 }
 
 // Fetch activity logs with optional filters
@@ -17,7 +19,10 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
   try {
     let query = supabase
       .from('activity_logs')
-      .select('*, users(username)')
+      .select(`
+        *,
+        users (username)
+      `)
       .order('created_at', { ascending: false });
     
     // Apply filters if provided
@@ -37,7 +42,12 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
     
     if (error) throw error;
     
-    return data || [];
+    // Transform the data to include the username from the nested users object
+    return data ? data.map(log => ({
+      ...log,
+      username: log.users?.username,
+      users: undefined // Remove the nested users object
+    })) : [];
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     toast({
