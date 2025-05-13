@@ -12,7 +12,8 @@ import {
   Newspaper,
   ShieldCheck,
   Activity,
-  Award
+  Award,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
@@ -41,6 +42,11 @@ const menuItems = [
   {
     title: "Users",
     icon: User,
+    href: "/admin/users",
+  },
+  {
+    title: "Manage Admins",
+    icon: UserPlus,
     href: "/admin/users",
   },
   {

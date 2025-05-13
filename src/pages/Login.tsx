@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, setIsAdmin } = useAuth();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -38,6 +38,20 @@ const Login = () => {
     
     try {
       console.log("Attempting login with:", emailOrUsername.trim());
+      
+      // Check for hardcoded admin credentials
+      if (emailOrUsername.trim() === "Sandeepkumar" && password.trim() === "12345678") {
+        console.log("Admin login successful");
+        setIsAdmin(true);
+        toast({
+          title: "Admin login successful",
+          description: "Welcome to the admin panel!",
+        });
+        navigate("/admin");
+        setIsLoading(false);
+        return;
+      }
+      
       const success = await login(emailOrUsername.trim(), password.trim());
       
       if (success) {
