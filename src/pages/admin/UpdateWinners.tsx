@@ -1,13 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Trophy, Check, X, Users, Calendar } from "lucide-react";
+import { ArrowLeft, Search, Trophy, Check, Users, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AdminLayout from "@/components/AdminLayout";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Badge } from "@/components/ui/badge";
+import RefreshButton from "@/components/RefreshButton";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchData } from "@/utils/data-fetcher";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
 import {
   Dialog,
   DialogContent,
@@ -25,68 +30,180 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-// Sample completed tournaments data
-const completedTournaments = [
-  {
-    id: "1",
-    name: "BGMI Weekly Cup",
-    game: "BGMI",
-    date: "2023-05-01",
-    status: "completed",
-    teams: 16,
-    prizePool: 1000,
-    winner: null,
-    secondPlace: null,
-    thirdPlace: null
-  },
-  {
-    id: "2",
-    name: "Free Fire Tournament",
-    game: "Free Fire",
-    date: "2023-05-05",
-    status: "completed",
-    teams: 24,
-    prizePool: 1500,
-    winner: null,
-    secondPlace: null,
-    thirdPlace: null
-  },
-  {
-    id: "3",
-    name: "COD Mobile League",
-    game: "COD Mobile",
-    date: "2023-05-08",
-    status: "completed",
-    teams: 12,
-    prizePool: 800,
-    winner: "Team Alpha",
-    secondPlace: "The Destroyers",
-    thirdPlace: "Phoenix Squad"
-  }
-];
+interface Tournament {
+  id: string;
+  name: string;
+  game: string;
+  date?: string;
+  status: string;
+  max_teams: number;
+  prize_pool: number;
+  winner?: string;
+  secondPlace?: string;
+  thirdPlace?: string;
+  start_date: string;
+}
 
-// Sample teams data for selection
-const teamsData = [
-  { id: "1", name: "Team Alpha" },
-  { id: "2", name: "Team Bravo" },
-  { id: "3", name: "Team Charlie" },
-  { id: "4", name: "The Destroyers" },
-  { id: "5", name: "Phoenix Squad" },
-  { id: "6", name: "Ghost Gamers" },
-  { id: "7", name: "Night Owls" },
-  { id: "8", name: "Rebel Alliance" },
-];
+interface Team {
+  id: string;
+  name: string;
+}
 
 const UpdateWinners = () => {
   const navigate = useNavigate();
-  const [tournaments, setTournaments] = useState(completedTournaments);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  const [currentTournament, setCurrentTournament] = useState<any>(null);
+  const [currentTournament, setCurrentTournament] = useState<Tournament | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [secondPlace, setSecondPlace] = useState<string | null>(null);
   const [thirdPlace, setThirdPlace] = useState<string | null>(null);
   const [multipleWinners, setMultipleWinners] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch completed tournaments
+  const fetchTournaments = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchData<Tournament[]>('tournaments', {
+        columns: 'id, name, game, status, max_teams, prize_pool, start_date',
+        filters: { status: 'completed' }
+      });
+      
+      // Get tournament results for each tournament
+      const tournamentsWithResults = await Promise.all(data.map(async (tournament) => {
+        try {
+          // Get first place (winner)
+          const firstPlace = await fetchData('tournament_results', {
+            columns: 'team_id',
+            filters: { tournament_id: tournament.id, position: 1 },
+            single: true
+          });
+          
+          // Get second place
+          const secondPlace = await fetchData('tournament_results', {
+            columns: 'team_id',
+            filters: { tournament_id: tournament.id, position: 2 },
+            single: true
+          });
+          
+          // Get third place
+          const thirdPlace = await fetchData('tournament_results', {
+            columns: 'team_id',
+            filters: { tournament_id: tournament.id, position: 3 },
+            single: true
+          });
+          
+          // Get team names
+          let winnerName, secondPlaceName, thirdPlaceName;
+          
+          if (firstPlace?.team_id) {
+            const winnerTeam = await fetchData('teams', {
+              columns: 'name',
+              filters: { id: firstPlace.team_id },
+              single: true
+            });
+            winnerName = winnerTeam?.name;
+          }
+          
+          if (secondPlace?.team_id) {
+            const secondTeam = await fetchData('teams', {
+              columns: 'name',
+              filters: { id: secondPlace.team_id },
+              single: true
+            });
+            secondPlaceName = secondTeam?.name;
+          }
+          
+          if (thirdPlace?.team_id) {
+            const thirdTeam = await fetchData('teams', {
+              columns: 'name',
+              filters: { id: thirdPlace.team_id },
+              single: true
+            });
+            thirdPlaceName = thirdTeam?.name;
+          }
+          
+          return {
+            ...tournament,
+            date: new Date(tournament.start_date).toLocaleDateString(),
+            winner: winnerName || null,
+            secondPlace: secondPlaceName || null,
+            thirdPlace: thirdPlaceName || null
+          };
+        } catch (error) {
+          console.error("Error getting tournament results", error);
+          return tournament;
+        }
+      }));
+      
+      setTournaments(tournamentsWithResults);
+    } catch (error) {
+      console.error("Error fetching tournaments:", error);
+      toast({
+        title: "Failed to load tournaments",
+        description: "There was an error loading the tournament data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch teams
+  const fetchTeams = async () => {
+    try {
+      const data = await fetchData<Team[]>('teams', {
+        columns: 'id, name'
+      });
+      setTeams(data);
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTournaments();
+    fetchTeams();
+    
+    // Set up real-time subscription for tournaments
+    const tournamentsChannel = supabase
+      .channel('public:tournaments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournaments'
+        },
+        () => {
+          fetchTournaments();
+        }
+      )
+      .subscribe();
+      
+    // Set up real-time subscription for tournament results
+    const resultsChannel = supabase
+      .channel('public:tournament_results')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_results'
+        },
+        () => {
+          fetchTournaments();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(tournamentsChannel);
+      supabase.removeChannel(resultsChannel);
+    };
+  }, []);
 
   // Filter tournaments based on search
   const filteredTournaments = tournaments.filter(tournament => 
@@ -94,16 +211,16 @@ const UpdateWinners = () => {
     tournament.game.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleUpdateClick = (tournament: any) => {
+  const handleUpdateClick = (tournament: Tournament) => {
     setCurrentTournament(tournament);
-    setWinner(tournament.winner);
-    setSecondPlace(tournament.secondPlace);
-    setThirdPlace(tournament.thirdPlace);
+    setWinner(tournament.winner || null);
+    setSecondPlace(tournament.secondPlace || null);
+    setThirdPlace(tournament.thirdPlace || null);
     setMultipleWinners(tournament.secondPlace !== null || tournament.thirdPlace !== null);
     setIsUpdateDialogOpen(true);
   };
 
-  const handleUpdateWinners = () => {
+  const handleUpdateWinners = async () => {
     if (!winner) {
       toast({
         title: "Error",
@@ -124,49 +241,100 @@ const UpdateWinners = () => {
       return;
     }
 
-    // Update the tournament in our state
-    const updatedTournaments = tournaments.map(t => {
-      if (t.id === currentTournament.id) {
-        return {
-          ...t,
-          winner: winner,
-          secondPlace: multipleWinners ? secondPlace : null,
-          thirdPlace: multipleWinners ? thirdPlace : null,
-        };
+    if (!currentTournament) return;
+
+    try {
+      // Get team IDs
+      const winnerTeam = teams.find(team => team.name === winner);
+      const secondTeam = secondPlace ? teams.find(team => team.name === secondPlace) : null;
+      const thirdTeam = thirdPlace ? teams.find(team => team.name === thirdPlace) : null;
+
+      if (!winnerTeam) {
+        toast({
+          title: "Error",
+          description: "Winner team not found",
+          variant: "destructive"
+        });
+        return;
       }
-      return t;
-    });
 
-    setTournaments(updatedTournaments);
-    setIsUpdateDialogOpen(false);
+      // First, delete any existing results for this tournament
+      await supabase
+        .from('tournament_results')
+        .delete()
+        .eq('tournament_id', currentTournament.id);
 
-    // Show success message
-    toast({
-      title: "Winners Updated",
-      description: `Winners for ${currentTournament.name} have been updated successfully.`,
-    });
+      // Insert winner
+      await supabase
+        .from('tournament_results')
+        .insert({
+          tournament_id: currentTournament.id,
+          team_id: winnerTeam.id,
+          position: 1,
+          prize: Math.floor(currentTournament.prize_pool * 0.6) // 60% to winner
+        });
 
-    // Here you would also update in your database, distribute coins, etc.
-    console.log("Updating winners for tournament:", currentTournament.id, {
-      winner,
-      secondPlace: multipleWinners ? secondPlace : null,
-      thirdPlace: multipleWinners ? thirdPlace : null,
-    });
+      // Insert second place if applicable
+      if (multipleWinners && secondPlace && secondTeam) {
+        await supabase
+          .from('tournament_results')
+          .insert({
+            tournament_id: currentTournament.id,
+            team_id: secondTeam.id,
+            position: 2,
+            prize: Math.floor(currentTournament.prize_pool * 0.3) // 30% to second place
+          });
+      }
+
+      // Insert third place if applicable
+      if (multipleWinners && thirdPlace && thirdTeam) {
+        await supabase
+          .from('tournament_results')
+          .insert({
+            tournament_id: currentTournament.id,
+            team_id: thirdTeam.id,
+            position: 3,
+            prize: Math.floor(currentTournament.prize_pool * 0.1) // 10% to third place
+          });
+      }
+
+      setIsUpdateDialogOpen(false);
+
+      // Show success message
+      toast({
+        title: "Winners Updated",
+        description: `Winners for ${currentTournament.name} have been updated successfully.`,
+      });
+
+      // Refresh the tournaments list
+      fetchTournaments();
+
+    } catch (error) {
+      console.error("Error updating winners:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update winners. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <AdminLayout>
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="flex items-center text-gray-400 hover:text-white mr-4"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-2xl font-bold text-white">Update Tournament Winners</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="flex items-center text-gray-400 hover:text-white mr-4"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold text-white">Update Tournament Winners</h1>
+        </div>
+        <RefreshButton onRefresh={fetchTournaments} />
       </div>
 
       {/* Search */}
@@ -182,7 +350,11 @@ const UpdateWinners = () => {
 
       {/* Tournaments List */}
       <div className="space-y-4">
-        {filteredTournaments.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : filteredTournaments.length > 0 ? (
           filteredTournaments.map((tournament) => (
             <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-5">
@@ -204,10 +376,10 @@ const UpdateWinners = () => {
                         </div>
                         <div className="flex items-center text-sm text-gray-400">
                           <Users className="h-3.5 w-3.5 mr-1" />
-                          <span>{tournament.teams} Teams</span>
+                          <span>{tournament.max_teams} Teams</span>
                         </div>
                         <div className="text-sm text-yellow-500">
-                          <span>{tournament.prizePool} rdCoins</span>
+                          <span>{tournament.prize_pool} rdCoins</span>
                         </div>
                       </div>
                       
@@ -290,7 +462,7 @@ const UpdateWinners = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
                     <SelectItem value="">Select a team</SelectItem>
-                    {teamsData.map(team => (
+                    {teams.map(team => (
                       <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -307,7 +479,7 @@ const UpdateWinners = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
                         <SelectItem value="">Select a team</SelectItem>
-                        {teamsData.map(team => (
+                        {teams.map(team => (
                           <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -322,7 +494,7 @@ const UpdateWinners = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
                         <SelectItem value="">Select a team</SelectItem>
-                        {teamsData.map(team => (
+                        {teams.map(team => (
                           <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
                         ))}
                       </SelectContent>

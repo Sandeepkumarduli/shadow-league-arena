@@ -1,1 +1,19 @@
+
 project_id = "qdobufrnlnhioksxdssu"
+
+[realtime]
+enabled = true
+
+[realtime.tables]
+tables = [
+  "public.users",
+  "public.teams",
+  "public.tournaments",
+  "public.tournament_registrations",
+  "public.tournament_results",
+  "public.transactions",
+  "public.wallets",
+  "public.news",
+  "public.notifications",
+  "public.admin_requests"
+]

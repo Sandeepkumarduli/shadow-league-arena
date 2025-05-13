@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -311,11 +310,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Regular user logout with Supabase
         await supabase.auth.signOut();
         
+        // Explicitly clear user data here
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        
         toast({
           title: "Logged Out",
           description: "You have been successfully logged out",
         });
       }
+      
+      // Force navigate to home page after logout
+      window.location.href = "/";
     } catch (error: any) {
       console.error("Logout error:", error.message);
       toast({

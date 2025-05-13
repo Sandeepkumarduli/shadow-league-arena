@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { UserPlus, Trash2, Check, X } from "lucide-react";
+import { UserPlus, Trash2, Check } from "lucide-react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import RefreshButton from "@/components/RefreshButton";
+import { fetchData } from "@/utils/data-fetcher";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface Admin {
   id: string;
@@ -26,12 +29,11 @@ const AdminUsers = () => {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, username, email, is_admin')
-        .eq('is_admin', true);
-
-      if (error) throw error;
+      const data = await fetchData<Admin[]>('users', {
+        columns: 'id, username, email, is_admin',
+        filters: { is_admin: true }
+      });
+      
       setAdmins(data || []);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -47,6 +49,27 @@ const AdminUsers = () => {
 
   useEffect(() => {
     fetchAdmins();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('public:users')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'users',
+          filter: 'is_admin=eq.true'
+        },
+        () => {
+          fetchAdmins();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Make a user an admin
@@ -63,13 +86,13 @@ const AdminUsers = () => {
     setIsSubmitting(true);
     try {
       // First check if the user exists
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, is_admin')
-        .eq('email', newAdminEmail.trim())
-        .single();
+      const userData = await fetchData('users', {
+        columns: 'id, is_admin',
+        filters: { email: newAdminEmail.trim() },
+        single: true
+      });
 
-      if (userError) {
+      if (!userData) {
         toast({
           title: "User not found",
           description: "No user exists with this email address.",
@@ -88,12 +111,10 @@ const AdminUsers = () => {
       }
 
       // Update the user to make them an admin
-      const { error: updateError } = await supabase
+      await supabase
         .from('users')
         .update({ is_admin: true })
         .eq('id', userData.id);
-
-      if (updateError) throw updateError;
 
       toast({
         title: "Admin added",
@@ -117,12 +138,10 @@ const AdminUsers = () => {
   // Remove admin privileges
   const removeAdmin = async (adminId: string, username: string) => {
     try {
-      const { error } = await supabase
+      await supabase
         .from('users')
         .update({ is_admin: false })
         .eq('id', adminId);
-
-      if (error) throw error;
 
       toast({
         title: "Admin removed",
@@ -143,7 +162,10 @@ const AdminUsers = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-white">Manage Admins</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Manage Admins</h1>
+          <RefreshButton onRefresh={fetchAdmins} />
+        </div>
         
         <Card className="bg-esports-dark border-esports-accent/20">
           <CardHeader>
@@ -177,8 +199,8 @@ const AdminUsers = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-4">
-                <p className="text-gray-400">Loading admins...</p>
+              <div className="flex justify-center py-8">
+                <LoadingSpinner />
               </div>
             ) : admins.length === 0 ? (
               <div className="text-center py-4">
