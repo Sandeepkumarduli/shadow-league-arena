@@ -1,44 +1,20 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Users, Shield, Trash, Flag, Trophy, PlusCircle } from "lucide-react";
+import { ArrowLeft, PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { InputWithIcon } from "@/components/ui/input-with-icon";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import RefreshButton from "@/components/RefreshButton";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchData } from "@/utils/data-fetcher";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-interface Team {
-  id: string;
-  name: string;
-  game?: string;
-  created_at: string;
-  active?: boolean;
-  captain?: string;
-}
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  joined: string;
-}
+import TeamCard from "@/components/admin/TeamCard";
+import TeamFilters from "@/components/admin/TeamFilters";
+import TeamDetails from "@/components/admin/TeamDetails";
+import CreateTeamDialog from "@/components/admin/CreateTeamDialog";
+import DeleteTeamDialog from "@/components/admin/DeleteTeamDialog";
+import { Team, TeamMember } from "@/types/team";
 
 const AdminTeams = () => {
   const navigate = useNavigate();
@@ -436,49 +412,14 @@ const AdminTeams = () => {
       </div>
       
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <InputWithIcon
-            placeholder="Search teams..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4" />}
-          />
-        </div>
-        <div>
-          <Select
-            value={gameFilter}
-            onValueChange={setGameFilter}
-          >
-            <SelectTrigger className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectValue placeholder="Filter by Game" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectItem value="all">All Games</SelectItem>
-              <SelectItem value="BGMI">BGMI</SelectItem>
-              <SelectItem value="Valorant">Valorant</SelectItem>
-              <SelectItem value="COD">COD</SelectItem>
-              <SelectItem value="FreeFire">Free Fire</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-          >
-            <SelectTrigger className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectValue placeholder="Filter by Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Banned</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <TeamFilters 
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        gameFilter={gameFilter}
+        onGameFilterChange={setGameFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+      />
       
       {/* Teams List */}
       <div className="space-y-4">
@@ -488,82 +429,13 @@ const AdminTeams = () => {
           </div>
         ) : filteredTeams.length > 0 ? (
           filteredTeams.map((team) => (
-            <Card key={team.id} className="bg-esports-dark border-esports-accent/20">
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                        {team.game}
-                      </Badge>
-                      <Badge variant={team.active ? "default" : "secondary"} className={team.active ? "bg-green-800/30 text-green-400 border-none" : "bg-red-800/30 text-red-400 border-none"}>
-                        {team.active ? "Active" : "Banned"}
-                      </Badge>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold font-rajdhani mb-3 text-white">
-                      {team.name}
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center text-gray-300">
-                        <Shield className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Captain: {team.captain}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-300">
-                        <Users className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Members: {team.members}/{team.maxMembers}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-300">
-                        <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Tournaments: {team.tournaments}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-300">
-                        <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Wins: {team.wins}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center mt-4 md:mt-0 space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
-                      onClick={() => handleViewTeam(team.id)}
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={team.active ? 
-                        "border-amber-500/20 text-amber-400 hover:bg-amber-500/10" : 
-                        "border-green-500/20 text-green-400 hover:bg-green-500/10"}
-                      onClick={() => handleBanTeam(team.id)}
-                    >
-                      <Flag className="h-4 w-4 mr-2" />
-                      {team.active ? "Ban Team" : "Unban Team"}
-                    </Button>
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
-                      onClick={() => handleDeleteTeam(team.id)}
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TeamCard
+              key={team.id}
+              team={team}
+              onViewDetails={handleViewTeam}
+              onToggleBan={handleBanTeam}
+              onDelete={handleDeleteTeam}
+            />
           ))
         ) : (
           <div className="text-center py-8">
@@ -573,171 +445,34 @@ const AdminTeams = () => {
       </div>
       
       {/* Create Team Dialog */}
-      <Dialog open={isCreateTeamDialogOpen} onOpenChange={setIsCreateTeamDialogOpen}>
-        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
-          <DialogHeader>
-            <DialogTitle>Create New Team</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Fill in the details to create a new team.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 my-2">
-            <div>
-              <Label htmlFor="teamName" className="text-white">Team Name</Label>
-              <Input
-                id="teamName"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="Enter team name"
-                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="game" className="text-white">Game</Label>
-              <Select value={newTeamGame} onValueChange={setNewTeamGame}>
-                <SelectTrigger id="game" className="bg-esports-darker border-esports-accent/20 text-white mt-1">
-                  <SelectValue placeholder="Select game" />
-                </SelectTrigger>
-                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                  <SelectItem value="BGMI">BGMI</SelectItem>
-                  <SelectItem value="Valorant">Valorant</SelectItem>
-                  <SelectItem value="COD">COD Mobile</SelectItem>
-                  <SelectItem value="FreeFire">Free Fire</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="captain" className="text-white">Captain Username</Label>
-              <Input
-                id="captain"
-                value={newTeamCaptain}
-                onChange={(e) => setNewTeamCaptain(e.target.value)}
-                placeholder="Enter captain's username"
-                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="maxMembers" className="text-white">Maximum Team Size</Label>
-              <Select value={newTeamMaxMembers} onValueChange={setNewTeamMaxMembers}>
-                <SelectTrigger id="maxMembers" className="bg-esports-darker border-esports-accent/20 text-white mt-1">
-                  <SelectValue placeholder="Select max team size" />
-                </SelectTrigger>
-                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                  <SelectItem value="1">1 (Solo)</SelectItem>
-                  <SelectItem value="2">2 (Duo)</SelectItem>
-                  <SelectItem value="4">4 (Squad)</SelectItem>
-                  <SelectItem value="5">5 (Squad+1)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setIsCreateTeamDialogOpen(false)}
-              className="text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleCreateTeam}
-              className="bg-esports-accent hover:bg-esports-accent/80"
-            >
-              Create Team
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTeamDialog
+        open={isCreateTeamDialogOpen}
+        onOpenChange={setIsCreateTeamDialogOpen}
+        newTeamName={newTeamName}
+        onNewTeamNameChange={setNewTeamName}
+        newTeamGame={newTeamGame}
+        onNewTeamGameChange={setNewTeamGame}
+        newTeamCaptain={newTeamCaptain}
+        onNewTeamCaptainChange={setNewTeamCaptain}
+        newTeamMaxMembers={newTeamMaxMembers}
+        onNewTeamMaxMembersChange={setNewTeamMaxMembers}
+        onCreateTeam={handleCreateTeam}
+      />
       
       {/* Team Details Dialog */}
-      <Dialog open={isTeamDetailsOpen} onOpenChange={setIsTeamDetailsOpen}>
-        <DialogContent className="bg-esports-dark text-white border-esports-accent/20 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{teams.find(t => t.id === selectedTeam)?.name || "Team Details"}</DialogTitle>
-            <DialogDescription className="text-gray-400 flex items-center gap-2">
-              <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                {teams.find(t => t.id === selectedTeam)?.game || "Unknown Game"}
-              </Badge>
-              <span>Created on {teams.find(t => t.id === selectedTeam)?.created_at ? 
-                new Date(teams.find(t => t.id === selectedTeam)?.created_at || "").toLocaleDateString() : 
-                "Unknown Date"}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="mt-4">
-            <h4 className="text-lg font-semibold mb-2">Team Members</h4>
-            {teamMembers.length > 0 ? (
-              <div className="space-y-2">
-                {teamMembers.map(member => (
-                  <div key={member.id} className="flex justify-between items-center p-3 bg-esports-darker rounded-md">
-                    <div className="flex items-center gap-2">
-                      <User className="h-5 w-5 text-esports-accent" />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-xs text-gray-400">Joined: {member.joined}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <Badge variant={member.role === "Captain" ? "default" : "outline"} className={member.role === "Captain" ? "bg-esports-accent/20 text-esports-accent border-none" : "bg-esports-dark text-white border-esports-accent/30"}>
-                        {member.role}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400">No team members found.</p>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsTeamDetailsOpen(false)}
-              className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TeamDetails
+        open={isTeamDetailsOpen}
+        onOpenChange={setIsTeamDetailsOpen}
+        selectedTeam={teams.find(t => t.id === selectedTeam) || null}
+        teamMembers={teamMembers}
+      />
       
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Are you sure you want to delete this team? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
-            >
-              Delete Team
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteTeamDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirmDelete={confirmDelete}
+      />
     </AdminLayout>
   );
 };
