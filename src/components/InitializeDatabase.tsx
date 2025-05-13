@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -19,17 +18,13 @@ const InitializeDatabase = ({ onComplete }: InitializeDatabaseProps) => {
       const { data: adminWallets } = await supabase.from('admin_wallet').select('*');
       
       if (!adminWallets || adminWallets.length === 0) {
-        // Insert initial admin wallet record
-        await supabase.from('admin_wallet').insert([
-          { balance: 50000 }
-        ]);
+        await supabase.from('admin_wallet').insert([{ balance: 50000 }]);
       }
 
       // Check if we have tournaments
       const { data: tournaments } = await supabase.from('tournaments').select('*');
       
       if (!tournaments || tournaments.length === 0) {
-        // Add sample tournaments
         await supabase.from('tournaments').insert([
           {
             name: 'BGMI Pro League Season 1',
@@ -74,12 +69,11 @@ const InitializeDatabase = ({ onComplete }: InitializeDatabaseProps) => {
           }
         ]);
       }
-      
+
       // Check if we have news items
       const { data: news } = await supabase.from('news').select('*');
       
       if (!news || news.length === 0) {
-        // Add sample news items
         await supabase.from('news').insert([
           {
             title: 'BGMI Pro League Season 1 Announced',
@@ -89,7 +83,7 @@ const InitializeDatabase = ({ onComplete }: InitializeDatabaseProps) => {
           },
           {
             title: 'New Valorant Tournament Format',
-            content: 'We're introducing a new bracket system for Valorant tournaments with double elimination rounds.',
+            content: 'We\'re introducing a new bracket system for Valorant tournaments with double elimination rounds.',
             category: 'Update',
             image_url: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
           },
@@ -101,12 +95,11 @@ const InitializeDatabase = ({ onComplete }: InitializeDatabaseProps) => {
           }
         ]);
       }
-      
+
       // Check if we have activity logs
       const { data: logs } = await supabase.from('activity_logs').select('*');
-      
+
       if (!logs || logs.length === 0) {
-        // Add sample activity logs
         await supabase.from('activity_logs').insert([
           {
             type: 'tournament',
@@ -140,12 +133,12 @@ const InitializeDatabase = ({ onComplete }: InitializeDatabaseProps) => {
           }
         ]);
       }
-      
+
       toast({
         title: "Database Initialized",
         description: "Sample data has been added to the database."
       });
-      
+
     } catch (error) {
       console.error("Error initializing database:", error);
       toast({
