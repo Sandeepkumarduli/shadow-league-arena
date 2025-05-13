@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trophy, Menu, X, User, LogOut } from "lucide-react";
@@ -52,14 +53,12 @@ const Navbar = () => {
                     Dashboard
                   </Button>
                 </Link>
-                {isAdmin && (
-                  <Link to="/admin">
-                    <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-[#1977d4]">
-                      <User className="h-4 w-4 mr-2" />
-                      Admin
-                    </Button>
-                  </Link>
-                )}
+                <Link to="/admin">
+                  <Button variant="ghost" className="text-white hover:bg-esports-dark hover:text-[#1977d4]">
+                    <User className="h-4 w-4 mr-2" />
+                    Admin
+                  </Button>
+                </Link>
                 <Button 
                   variant="outline" 
                   className="text-white border-[#1977d4]/30 hover:bg-esports-dark hover:text-[#1977d4]"
@@ -119,14 +118,12 @@ const Navbar = () => {
                         Dashboard
                       </Button>
                     </Link>
-                    {isAdmin && (
-                      <Link to="/admin">
-                        <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-[#1977d4] w-full">
-                          <User className="h-4 w-4 mr-2" />
-                          Admin
-                        </Button>
-                      </Link>
-                    )}
+                    <Link to="/admin">
+                      <Button variant="ghost" className="text-white justify-start hover:bg-esports-dark hover:text-[#1977d4] w-full">
+                        <User className="h-4 w-4 mr-2" />
+                        Admin
+                      </Button>
+                    </Link>
                     <Button 
                       variant="outline" 
                       className="text-white justify-start border-[#1977d4]/30 hover:bg-esports-dark hover:text-[#1977d4] w-full"

@@ -1,5 +1,5 @@
 
-import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { logActivity } from "./activityLogService";
 
@@ -54,9 +54,20 @@ export const subscribeAdminRequests = (callback: (requests: AdminRequest[]) => v
   fetchAdminRequests(statusFilter).then(callback);
   
   // Set up real-time subscription
-  const channel = createRealtimeChannel('admin_requests', () => {
-    fetchAdminRequests(statusFilter).then(callback);
-  });
+  const channel = supabase
+    .channel('public:admin_requests')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'admin_requests'
+      },
+      () => {
+        fetchAdminRequests(statusFilter).then(callback);
+      }
+    )
+    .subscribe();
   
   return () => {
     supabase.removeChannel(channel);
@@ -105,7 +116,7 @@ export const approveAdminRequest = async (requestId: string) => {
       type: 'user',
       action: 'admin_grant',
       details: `Approved admin request for user ${request.user?.username}`,
-      user_id: adminId,
+      userId: adminId,
       metadata: { requestId, userId: request.user_id }
     });
     
@@ -160,7 +171,7 @@ export const rejectAdminRequest = async (requestId: string) => {
       type: 'user',
       action: 'admin_reject',
       details: `Rejected admin request for user ${request.user?.username}`,
-      user_id: adminId,
+      userId: adminId,
       metadata: { requestId, userId: request.user_id }
     });
     

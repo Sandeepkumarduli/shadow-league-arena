@@ -50,10 +50,14 @@ export const giveCoinsToUser = async ({ userId, amount, description }: Transacti
   }
   
   try {
-    // Call Supabase RPC function to give coins
+    // Call Supabase function to give coins
     const { data, error } = await supabase.rpc(
       'give_coins_to_user',
-      { user_id: userId, coin_amount: amount, transaction_description: description || "Admin gave coins" } as any
+      { 
+        user_id: userId, 
+        coin_amount: amount, 
+        transaction_description: description || "Admin gave coins" 
+      }
     );
 
     if (error) throw error;
@@ -95,10 +99,14 @@ export const deductCoinsFromUser = async ({ userId, amount, description }: Trans
   }
   
   try {
-    // Call Supabase RPC function to deduct coins
+    // Call Supabase function to deduct coins
     const { data, error } = await supabase.rpc(
       'deduct_coins_from_user',
-      { user_id: userId, coin_amount: amount, transaction_description: description || "Admin deducted coins" } as any
+      {
+        user_id: userId, 
+        coin_amount: amount, 
+        transaction_description: description || "Admin deducted coins" 
+      }
     );
 
     if (error) throw error;
@@ -127,3 +135,6 @@ export const deductCoinsFromUser = async ({ userId, amount, description }: Trans
     return false;
   }
 };
+
+// Alias functions for backward compatibility
+export const transferCoinsToUser = giveCoinsToUser;

@@ -1,250 +1,148 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Search, Calendar, Trophy, Users, Filter, ChevronDown, ArrowRight } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { fetchTournaments, subscribeTournamentChanges } from "@/services/tournamentService";
+import { useNavigate } from "react-router-dom";
+import TournamentCard from "@/components/TournamentCard";
+import TournamentFilters from "@/components/TournamentFilters";
+import { Trophy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Tournament } from "@/types/tournament";
+import { toast } from "@/hooks/use-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const Tournaments = () => {
+export default function Tournaments() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [filteredTournaments, setFilteredTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [gameFilter, setGameFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [gameFilter, setGameFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const unsubscribe = subscribeTournamentChanges((fetchedTournaments) => {
-      setTournaments(fetchedTournaments);
-      setFilteredTournaments(fetchedTournaments);
-      setLoading(false);
-    });
-    
-    return () => {
-      unsubscribe();
+    const fetchTournaments = async () => {
+      try {
+        let query = supabase.from("tournaments").select("*");
+        
+        // Apply status filter if not "all"
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
+        
+        // Apply game filter if not "all"
+        if (gameFilter !== "all" && gameFilter !== "") {
+          query = query.eq("game", gameFilter);
+        }
+        
+        // Order by date
+        query = query.order("start_date", { ascending: true });
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        setTournaments(data || []);
+      } catch (error) {
+        console.error("Error fetching tournaments:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load tournaments. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-  }, []);
 
-  useEffect(() => {
-    // Apply filters
-    let result = tournaments;
+    fetchTournaments();
     
-    // Search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        tournament => 
-          tournament.name.toLowerCase().includes(query) || 
-          tournament.game.toLowerCase().includes(query)
-      );
-    }
-    
-    // Game filter
-    if (gameFilter !== "all") {
-      result = result.filter(tournament => tournament.game === gameFilter);
-    }
-    
-    // Status filter
-    if (statusFilter !== "all") {
-      result = result.filter(tournament => tournament.status === statusFilter);
-    }
-    
-    setFilteredTournaments(result);
-  }, [searchQuery, gameFilter, statusFilter, tournaments]);
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('public:tournaments')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tournaments' },
+        () => {
+          console.log("Tournaments table updated, refreshing data");
+          fetchTournaments();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [statusFilter, gameFilter]);
 
-  // Get unique games for the filter
-  const uniqueGames = Array.from(new Set(tournaments.map(t => t.game)));
+  // Get unique game types for filter dropdown
+  const gameTypes = Array.from(
+    new Set(tournaments.map((tournament) => tournament.game))
+  );
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric'
-    });
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "upcoming":
-        return "bg-blue-500/20 text-blue-400 border-none";
-      case "live":
-        return "bg-green-500/20 text-green-400 border-none";
-      case "completed":
-        return "bg-gray-500/20 text-gray-400 border-none";
-      case "cancelled":
-        return "bg-red-500/20 text-red-400 border-none";
-      default:
-        return "bg-gray-500/20 text-gray-400 border-none";
-    }
-  };
+  // Filter tournaments based on search query
+  const filteredTournaments = tournaments.filter((tournament) =>
+    tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tournament.game.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="flex h-screen bg-esports-darker overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar className="hidden md:block" />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar />
-        
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Tournaments</h1>
-              <p className="text-gray-400">Browse and join upcoming tournaments</p>
-            </div>
-            
-            <Button
-              className="bg-esports-accent hover:bg-esports-accent/80 text-white mt-4 md:mt-0"
-              onClick={() => navigate('/request-admin')}
-            >
-              Request to Host Tournament
-            </Button>
+    <div className="container mx-auto px-4 md:px-6 py-24">
+      {/* Hero Section */}
+      <div className="relative bg-esports-dark rounded-lg p-6 md:p-10 mb-8 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-esports-accent/20 to-transparent opacity-50"></div>
+        <div className="relative z-10">
+          <div className="flex items-center mb-4">
+            <Trophy className="h-7 w-7 md:h-10 md:w-10 text-esports-accent mr-3" />
+            <h1 className="text-3xl md:text-5xl font-bold font-rajdhani text-white">
+              TOURNAMENTS
+            </h1>
           </div>
-          
-          {/* Filters */}
-          <div className="mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                  <Input
-                    placeholder="Search tournaments..."
-                    className="bg-esports-dark border-esports-accent/20 text-white pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex md:hidden">
-                <Button
-                  variant="outline"
-                  className="w-full border-esports-accent/20 text-white flex items-center justify-between"
-                  onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-                >
-                  <div className="flex items-center">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <span>Filter</span>
-                  </div>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <div className={cn(
-                "md:flex gap-4",
-                isMobileFilterOpen ? "flex flex-col" : "hidden"
-              )}>
-                <Select value={gameFilter} onValueChange={setGameFilter}>
-                  <SelectTrigger className="w-full md:w-[180px] bg-esports-dark border-esports-accent/20 text-white">
-                    <SelectValue placeholder="Game" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                    <SelectItem value="all">All Games</SelectItem>
-                    {uniqueGames.map(game => (
-                      <SelectItem key={game} value={game}>{game}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[180px] bg-esports-dark border-esports-accent/20 text-white">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          
-          {/* Tournaments List */}
-          {loading ? (
-            <div className="text-center py-20">
-              <LoadingSpinner />
-            </div>
-          ) : filteredTournaments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredTournaments.map((tournament) => (
-                <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20 hover:border-esports-accent/50 transition-colors overflow-hidden">
-                  <div className="h-3 bg-esports-accent" />
-                  <CardContent className="p-5">
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="outline" className={getStatusBadgeClass(tournament.status)}>
-                        {tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}
-                      </Badge>
-                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                        {tournament.game}
-                      </Badge>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold font-rajdhani mb-3 text-white">
-                      {tournament.name}
-                    </h3>
-                    
-                    <div className="space-y-2.5 mb-4">
-                      <div className="flex items-center text-gray-400">
-                        <Calendar className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>{formatDate(tournament.start_date)}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-400">
-                        <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Prize: {tournament.prize_pool} rdCoins</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-400">
-                        <Users className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Teams: {tournament.max_teams}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 pt-4 border-t border-esports-accent/10 flex items-center justify-between">
-                      <div className="text-xl font-bold text-esports-accent">
-                        {tournament.entry_fee > 0 ? `${tournament.entry_fee} rdCoins` : 'Free Entry'}
-                      </div>
-                      <Button 
-                        className="bg-esports-accent hover:bg-esports-accent/80 text-white rounded-full"
-                        size="sm"
-                        onClick={() => navigate(`/tournaments/${tournament.id}`)}
-                      >
-                        <span className="mr-1">Details</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20">
-              <p className="text-gray-400">No tournaments found matching your filters</p>
-            </div>
-          )}
-        </main>
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mb-6">
+            Compete in exciting esports tournaments across various games. 
+            Register your team, battle against the best, and win incredible prizes!
+          </p>
+          <Button 
+            className="bg-esports-accent hover:bg-esports-accent/80 text-white clip-path-angle"
+            onClick={() => navigate('/my-teams')}
+          >
+            Register Your Team
+          </Button>
+        </div>
       </div>
+
+      {/* Filters */}
+      <TournamentFilters
+        statusFilter={statusFilter}
+        gameFilter={gameFilter}
+        searchQuery={searchQuery}
+        gameTypes={gameTypes}
+        onStatusChange={setStatusFilter}
+        onGameChange={setGameFilter}
+        onSearchChange={setSearchQuery}
+      />
+
+      {/* Tournaments Grid */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <LoadingSpinner size={40} />
+        </div>
+      ) : filteredTournaments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          {filteredTournaments.map((tournament) => (
+            <TournamentCard
+              key={tournament.id}
+              tournament={tournament}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Trophy className="h-16 w-16 text-gray-600 mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">No Tournaments Found</h3>
+          <p className="text-gray-400 text-center max-w-md">
+            There are no tournaments matching your current filters. Try changing your filter criteria or check back later for new tournaments.
+          </p>
+        </div>
+      )}
     </div>
   );
-};
-
-export default Tournaments;
+}

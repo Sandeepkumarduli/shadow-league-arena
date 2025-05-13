@@ -9,21 +9,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import RefreshButton from "@/components/RefreshButton";
-import { fetchUsers, updateUser, User as UserType } from "@/services/userService";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Search } from "lucide-react";
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  phone: string;
+  is_admin: boolean;
+  created_at: string;
+  balance: number;
+  bgmiid?: string;
+}
+
 const AdminUsers = () => {
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddAdminDialogOpen, setIsAddAdminDialogOpen] = useState(false);
@@ -32,10 +42,35 @@ const AdminUsers = () => {
   const fetchAllUsers = async () => {
     setLoading(true);
     try {
-      const data = await fetchUsers();
-      console.log("Fetched users:", data);
-      setUsers(data || []);
-      setFilteredUsers(data || []);
+      // First get users
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('*');
+      
+      if (usersError) throw usersError;
+      
+      // Then fetch their wallet balances
+      const { data: wallets, error: walletsError } = await supabase
+        .from('wallets')
+        .select('user_id, balance');
+        
+      if (walletsError) throw walletsError;
+      
+      // Create a map of user_id to balance
+      const balanceMap = (wallets || []).reduce(
+        (map, wallet) => ({ ...map, [wallet.user_id]: wallet.balance || 0 }), 
+        {} as Record<string, number>
+      );
+      
+      // Combine user data with balance
+      const usersWithBalance = users ? users.map(user => ({
+        ...user,
+        balance: balanceMap[user.id] || 0
+      })) : [];
+      
+      console.log("Fetched users:", usersWithBalance);
+      setUsers(usersWithBalance || []);
+      setFilteredUsers(usersWithBalance || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({
@@ -52,10 +87,17 @@ const AdminUsers = () => {
     fetchAllUsers();
     
     // Set up real-time subscription with improved error handling
-    const channel = createRealtimeChannel('users', () => {
-      console.log("Users table updated, refreshing users list");
-      fetchAllUsers();
-    });
+    const channel = supabase
+      .channel('public:users')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        () => {
+          console.log("Users table updated, refreshing users list");
+          fetchAllUsers();
+        }
+      )
+      .subscribe();
     
     return () => {
       supabase.removeChannel(channel);
@@ -73,17 +115,21 @@ const AdminUsers = () => {
   }, [searchQuery, users]);
 
   // Make a user an admin
-  const handleMakeAdmin = async (user: UserType) => {
+  const handleMakeAdmin = async (user: User) => {
     setIsSubmitting(true);
     try {
-      const updatedUser = await updateUser(user.id, { is_admin: true });
-      if (updatedUser) {
-        toast({
-          title: "Admin permissions granted",
-          description: `${user.username} is now an admin.`,
-        });
-        fetchAllUsers();
-      }
+      const { error } = await supabase
+        .from('users')
+        .update({ is_admin: true })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Admin permissions granted",
+        description: `${user.username} is now an admin.`,
+      });
+      fetchAllUsers();
     } catch (error) {
       console.error("Error making admin:", error);
       toast({
@@ -97,17 +143,21 @@ const AdminUsers = () => {
   };
 
   // Remove admin privileges
-  const handleRemoveAdmin = async (user: UserType) => {
+  const handleRemoveAdmin = async (user: User) => {
     setIsSubmitting(true);
     try {
-      const updatedUser = await updateUser(user.id, { is_admin: false });
-      if (updatedUser) {
-        toast({
-          title: "Admin permissions revoked",
-          description: `${user.username} is no longer an admin.`,
-        });
-        fetchAllUsers();
-      }
+      const { error } = await supabase
+        .from('users')
+        .update({ is_admin: false })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Admin permissions revoked",
+        description: `${user.username} is no longer an admin.`,
+      });
+      fetchAllUsers();
     } catch (error) {
       console.error("Error removing admin:", error);
       toast({
@@ -121,7 +171,7 @@ const AdminUsers = () => {
   };
 
   // Edit user
-  const handleEditUser = (user: UserType) => {
+  const handleEditUser = (user: User) => {
     setSelectedUser({...user});
     setIsEditDialogOpen(true);
   };
@@ -131,21 +181,24 @@ const AdminUsers = () => {
     
     setIsSubmitting(true);
     try {
-      const updatedUser = await updateUser(selectedUser.id, {
-        username: selectedUser.username,
-        email: selectedUser.email,
-        phone: selectedUser.phone,
-        bgmiid: selectedUser.bgmiid,
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: selectedUser.username,
+          email: selectedUser.email,
+          phone: selectedUser.phone,
+          bgmiid: selectedUser.bgmiid,
+        })
+        .eq('id', selectedUser.id);
+        
+      if (error) throw error;
       
-      if (updatedUser) {
-        toast({
-          title: "User Updated",
-          description: `User ${selectedUser.username} has been updated.`,
-        });
-        setIsEditDialogOpen(false);
-        fetchAllUsers();
-      }
+      toast({
+        title: "User Updated",
+        description: `User ${selectedUser.username} has been updated.`,
+      });
+      setIsEditDialogOpen(false);
+      fetchAllUsers();
     } catch (error) {
       console.error("Error updating user:", error);
       toast({
@@ -159,7 +212,7 @@ const AdminUsers = () => {
   };
 
   // Delete user
-  const handleDeleteClick = (user: UserType) => {
+  const handleDeleteClick = (user: User) => {
     setSelectedUser(user);
     setIsDeleteDialogOpen(true);
   };
@@ -234,7 +287,12 @@ const AdminUsers = () => {
       }
 
       // Update the user to make them an admin
-      await updateUser(data.id, { is_admin: true });
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ is_admin: true })
+        .eq('id', data.id);
+        
+      if (updateError) throw updateError;
 
       toast({
         title: "Admin added",
@@ -528,7 +586,6 @@ const AdminUsers = () => {
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={isSubmitting}
-              className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
             >
               {isSubmitting ? "Deleting..." : "Delete User"}
             </Button>

@@ -1,19 +1,4 @@
 
-import { AuthProvider } from './AuthProvider';
-import { useAuthContext } from './useAuthContext';
-import type { User, UserMetadata, AuthContextProps } from './types';
+import { AuthProvider, useAuth } from './useAuthContext';
 
-// Export the hook as useAuth for backward compatibility
-const useAuth = useAuthContext;
-
-export {
-  AuthProvider,
-  useAuth,
-  useAuthContext
-};
-
-export type {
-  User,
-  UserMetadata,
-  AuthContextProps
-};
+export { AuthProvider, useAuth };

@@ -1,112 +1,115 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Check, ArrowLeft } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/AdminLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/integrations/supabase/client";
-import LoadingSpinner from "@/components/LoadingSpinner";
+import { toast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import { fetchCurrentUser } from "@/services/authService";
+import { User } from "@/services/userService";
 
 const AdminProfile = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [profileData, setProfileData] = useState({
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
     username: "",
     email: "",
     phone: "",
     bgmiid: "",
   });
 
-  const fetchProfileData = async () => {
-    if (!user?.id) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('username, email, phone, bgmiid')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        setProfileData({
-          username: data.username || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          bgmiid: data.bgmiid || "",
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      toast({
-        title: "Failed to load profile",
-        description: "There was an error loading your profile information.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchProfileData();
-  }, [user?.id]);
+    const loadUserProfile = async () => {
+      if (!authUser) return;
+      
+      try {
+        const userData = await fetchCurrentUser();
+        if (userData) {
+          setUser(userData);
+          setFormData({
+            username: userData.username || "",
+            email: userData.email || "",
+            phone: userData.phone || "",
+            bgmiid: userData.bgmiid || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading user profile:", error);
+        toast({
+          title: "Failed to load profile",
+          description: "There was an error loading your profile information.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleInputChange = (field: string, value: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    loadUserProfile();
+  }, [authUser]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = async () => {
-    if (!user?.id) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setSaving(true);
+    if (!user || !authUser) return;
+    
+    setIsSaving(true);
+    
     try {
+      // Update user profile in Supabase
       const { error } = await supabase
-        .from('users')
+        .from("users")
         .update({
-          username: profileData.username,
-          phone: profileData.phone,
-          bgmiid: profileData.bgmiid,
+          username: formData.username,
+          phone: formData.phone,
+          bgmiid: formData.bgmiid,
         })
-        .eq('id', user.id);
-      
+        .eq("id", user.id);
+        
       if (error) throw error;
+      
+      // Update email if changed (requires authentication)
+      if (formData.email !== user.email) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: formData.email,
+        });
+        
+        if (emailError) throw emailError;
+      }
       
       toast({
         title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
+        description: "Your profile information has been updated successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
-        title: "Failed to update profile",
-        description: "There was an error updating your profile information.",
+        title: "Update Failed",
+        description: error.message || "There was an error updating your profile.",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <AdminLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <LoadingSpinner />
+        <div className="flex justify-center items-center min-h-[500px]">
+          <Loader2 className="h-8 w-8 text-[#1977d4] animate-spin" />
         </div>
       </AdminLayout>
     );
@@ -114,108 +117,112 @@ const AdminProfile = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="flex items-center text-gray-400 hover:text-white mr-4"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-white">My Profile</h1>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <Card className="bg-esports-dark border-esports-accent/20">
-              <CardHeader>
-                <CardTitle className="text-white">Profile Picture</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center pb-6">
-                <div className="mb-4">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback className="bg-esports-accent text-2xl font-bold">
-                      {profileData.username.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-white">{profileData.username}</h3>
-                  <p className="text-gray-400">{profileData.email}</p>
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    <Check className="h-4 w-4 text-esports-accent" />
-                    <span className="text-esports-accent text-sm">Admin</span>
+      <h1 className="text-2xl font-bold text-white mb-6">My Profile</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Profile Information Card */}
+        <div className="md:col-span-2">
+          <Card className="bg-esports-dark border-esports-accent/20">
+            <CardHeader>
+              <CardTitle className="text-white">Profile Information</CardTitle>
+              <CardDescription>Update your personal information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-white">Username</Label>
+                    <Input
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      className="bg-esports-darker border-esports-accent/20 text-white"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="bg-esports-darker border-esports-accent/20 text-white"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-white">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="bg-esports-darker border-esports-accent/20 text-white"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="bgmiid" className="text-white">BGMI ID (Optional)</Label>
+                    <Input
+                      id="bgmiid"
+                      name="bgmiid"
+                      value={formData.bgmiid || ""}
+                      onChange={handleChange}
+                      className="bg-esports-darker border-esports-accent/20 text-white"
+                      placeholder="Enter your BGMI ID"
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="md:col-span-2">
-            <Card className="bg-esports-dark border-esports-accent/20">
-              <CardHeader>
-                <CardTitle className="text-white">Profile Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="username" className="text-white">Username</Label>
-                  <Input
-                    id="username"
-                    value={profileData.username}
-                    onChange={(e) => handleInputChange("username", e.target.value)}
-                    className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                  />
-                </div>
                 
-                <div>
-                  <Label htmlFor="email" className="text-white">Email</Label>
-                  <Input
-                    id="email"
-                    value={profileData.email}
-                    readOnly
-                    disabled
-                    className="bg-esports-darker border-esports-accent/20 text-gray-400 mt-1 cursor-not-allowed"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-                </div>
-                
-                <div>
-                  <Label htmlFor="phone" className="text-white">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={profileData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="bgmiid" className="text-white">BGMI ID</Label>
-                  <Input
-                    id="bgmiid"
-                    value={profileData.bgmiid}
-                    onChange={(e) => handleInputChange("bgmiid", e.target.value)}
-                    className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                    placeholder="Enter your BGMI ID (optional)"
-                  />
-                </div>
-                
-                <div className="pt-4">
+                <div className="flex justify-end">
                   <Button 
-                    onClick={handleSave} 
-                    disabled={saving} 
-                    className="bg-esports-accent hover:bg-esports-accent/80"
+                    type="submit"
+                    className="bg-[#1977d4] hover:bg-[#1977d4]/80"
+                    disabled={isSaving}
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSaving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Profile Avatar Card */}
+        <div>
+          <Card className="bg-esports-dark border-esports-accent/20">
+            <CardHeader>
+              <CardTitle className="text-white">Profile Picture</CardTitle>
+              <CardDescription>Update your profile image</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center">
+              <Avatar className="h-32 w-32 border-2 border-esports-accent/30">
+                <AvatarImage src="" />
+                <AvatarFallback className="bg-esports-accent/10 text-esports-accent text-4xl">
+                  {user?.username?.charAt(0).toUpperCase() || authUser?.email?.charAt(0).toUpperCase() || 'A'}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="mt-6 space-y-4 w-full">
+                <Button
+                  variant="outline"
+                  className="w-full border-[#1977d4]/30 text-white hover:text-[#1977d4]"
+                >
+                  Upload Image
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                >
+                  Remove Image
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AdminLayout>

@@ -12,7 +12,7 @@ export type Database = {
       activity_logs: {
         Row: {
           action: string
-          created_at: string
+          created_at: string | null
           details: string
           id: string
           metadata: Json | null
@@ -21,7 +21,7 @@ export type Database = {
         }
         Insert: {
           action: string
-          created_at?: string
+          created_at?: string | null
           details: string
           id?: string
           metadata?: Json | null
@@ -30,14 +30,22 @@ export type Database = {
         }
         Update: {
           action?: string
-          created_at?: string
+          created_at?: string | null
           details?: string
           id?: string
           metadata?: Json | null
           type?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_requests: {
         Row: {
@@ -89,19 +97,19 @@ export type Database = {
       }
       admin_wallet: {
         Row: {
-          balance: number
+          balance: number | null
           id: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          balance?: number
+          balance?: number | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          balance?: number
+          balance?: number | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -112,7 +120,7 @@ export type Database = {
           message_type: string
           recipient_identifier: string | null
           recipient_type: string
-          sent_at: string
+          sent_at: string | null
           sent_by: string | null
         }
         Insert: {
@@ -121,7 +129,7 @@ export type Database = {
           message_type: string
           recipient_identifier?: string | null
           recipient_type: string
-          sent_at?: string
+          sent_at?: string | null
           sent_by?: string | null
         }
         Update: {
@@ -130,10 +138,18 @@ export type Database = {
           message_type?: string
           recipient_identifier?: string | null
           recipient_type?: string
-          sent_at?: string
+          sent_at?: string | null
           sent_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       news: {
         Row: {
@@ -511,7 +527,7 @@ export type Database = {
           {
             foreignKeyName: "wallets_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -522,7 +538,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      deduct_coins_from_user: {
+        Args: {
+          user_id: string
+          coin_amount: number
+          transaction_description?: string
+        }
+        Returns: boolean
+      }
+      give_coins_to_user: {
+        Args: {
+          user_id: string
+          coin_amount: number
+          transaction_description?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,245 +1,345 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  ArrowLeft, 
   Edit, 
-  Trash, 
-  Search, 
+  Trash2, 
   PlusCircle, 
-  CalendarCheck, 
-  Users, 
-  Trophy,
-  Calendar,
-  Filter
+  Search, 
+  ArrowLeft, 
+  Check, 
+  X, 
+  Calendar, 
+  Flag
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { InputWithIcon } from "@/components/ui/input-with-icon";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchTournaments, deleteTournament, updateTournament } from "@/services/tournamentService";
-import { Tournament } from "@/types/tournament";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { Tournament } from "@/types/tournament";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import RefreshButton from "@/components/RefreshButton";
 
-const AdminTournaments = () => {
+export default function AdminTournaments() {
   const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gameFilter, setGameFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  
-  const [tournamentToDelete, setTournamentToDelete] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [gameFilter, setGameFilter] = useState("all");
+  const [currentTournament, setCurrentTournament] = useState<Tournament | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  const [distributeToTopThree, setDistributeToTopThree] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
 
-  // Fetch tournaments from database
-  const loadTournaments = async () => {
+  // Form data for editing tournament
+  const [formData, setFormData] = useState({
+    name: "",
+    game: "",
+    description: "",
+    max_teams: 0,
+    prize_pool: 0,
+    entry_fee: 0,
+    start_date: "",
+    end_date: "",
+    status: "",
+  });
+
+  // Fetch tournaments
+  const fetchTournaments = async () => {
     setLoading(true);
     try {
-      const data = await fetchTournaments();
+      let query = supabase.from("tournaments").select("*");
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
       setTournaments(data || []);
     } catch (error) {
       console.error("Error fetching tournaments:", error);
       toast({
         title: "Failed to load tournaments",
-        description: "There was a problem fetching tournament data.",
+        description: "There was an error loading the tournament data.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
-    loadTournaments();
+    fetchTournaments();
     
     // Set up real-time subscription
     const channel = supabase
       .channel('public:tournaments')
-      .on('postgres_changes', 
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'tournaments' },
         () => {
-          loadTournaments();
+          console.log("Tournaments table updated, refreshing data");
+          fetchTournaments();
         }
       )
       .subscribe();
-    
+      
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
-  
-  // Filter tournaments based on selections
-  const filteredTournaments = tournaments.filter(tournament => {
-    // Apply game filter
-    if (gameFilter !== "all" && tournament.game !== gameFilter) return false;
-    
-    // Apply status filter
-    if (statusFilter !== "all" && tournament.status !== statusFilter) return false;
-    
-    // Apply search query
-    if (searchQuery && !tournament.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    
-    // Apply date filter
-    if (dateFilter && tournament.start_date) {
-      const tournamentDate = new Date(tournament.start_date);
-      if (
-        tournamentDate.getDate() !== dateFilter.getDate() ||
-        tournamentDate.getMonth() !== dateFilter.getMonth() ||
-        tournamentDate.getFullYear() !== dateFilter.getFullYear()
-      ) {
-        return false;
-      }
-    }
-    
-    return true;
+
+  // Filter tournaments
+  const filteredTournaments = tournaments.filter((tournament) => {
+    const matchesSearch =
+      tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tournament.game.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    const matchesStatus =
+      statusFilter === "all" || tournament.status === statusFilter;
+      
+    const matchesGame =
+      gameFilter === "all" || tournament.game.toLowerCase() === gameFilter.toLowerCase();
+      
+    return matchesSearch && matchesStatus && matchesGame;
   });
 
-  const handleCreateTournament = () => {
-    navigate("/admin/create-tournament");
+  // Get unique game names for filter
+  const uniqueGames = Array.from(
+    new Set(tournaments.map((tournament) => tournament.game))
+  );
+
+  // Handle edit tournament
+  const handleEditClick = (tournament: Tournament) => {
+    setCurrentTournament(tournament);
+    setFormData({
+      name: tournament.name,
+      game: tournament.game,
+      description: tournament.description || "",
+      max_teams: tournament.max_teams,
+      prize_pool: tournament.prize_pool,
+      entry_fee: tournament.entry_fee || 0,
+      start_date: tournament.start_date,
+      end_date: tournament.end_date || "",
+      status: tournament.status,
+    });
+    setIsEditDialogOpen(true);
   };
-  
-  const handleEditTournament = (tournamentId: string) => {
-    const tournament = tournaments.find(t => t.id === tournamentId);
-    
-    if (tournament) {
-      setSelectedTournament({...tournament});
-      setDistributeToTopThree(tournament.secondPlace !== undefined || tournament.thirdPlace !== undefined);
-      setIsEditDialogOpen(true);
-    }
+
+  // Handle delete tournament click
+  const handleDeleteClick = (tournament: Tournament) => {
+    setCurrentTournament(tournament);
+    setIsDeleteDialogOpen(true);
   };
-  
-  const handleSaveEdit = async () => {
-    if (!selectedTournament) return;
+
+  // Handle status change click
+  const handleStatusClick = (tournament: Tournament) => {
+    setCurrentTournament(tournament);
+    setNewStatus(tournament.status);
+    setIsStatusDialogOpen(true);
+  };
+
+  // Handle form input change
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "max_teams" || name === "prize_pool" || name === "entry_fee" ? parseInt(value) : value,
+    }));
+  };
+
+  // Save tournament changes
+  const handleSaveTournament = async () => {
+    if (!currentTournament) return;
     
+    setIsSubmitting(true);
     try {
-      await updateTournament(selectedTournament);
+      const { error } = await supabase
+        .from("tournaments")
+        .update({
+          name: formData.name,
+          game: formData.game,
+          description: formData.description,
+          max_teams: formData.max_teams,
+          prize_pool: formData.prize_pool,
+          entry_fee: formData.entry_fee,
+          start_date: formData.start_date,
+          end_date: formData.end_date || null,
+          status: formData.status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentTournament.id);
+        
+      if (error) throw error;
       
       toast({
         title: "Tournament Updated",
-        description: `Tournament "${selectedTournament.name}" has been updated.`,
+        description: `${formData.name} has been updated successfully.`,
       });
       
       setIsEditDialogOpen(false);
-      loadTournaments();
+      fetchTournaments();
     } catch (error) {
       console.error("Error updating tournament:", error);
       toast({
         title: "Update Failed",
-        description: "There was a problem updating the tournament.",
+        description: "There was an error updating the tournament.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
-  const handleDeleteTournament = (tournamentId: string) => {
-    setTournamentToDelete(tournamentId);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = async () => {
-    if (!tournamentToDelete) return;
+
+  // Delete tournament
+  const handleDeleteTournament = async () => {
+    if (!currentTournament) return;
     
+    setIsSubmitting(true);
     try {
-      await deleteTournament(tournamentToDelete);
+      const { error } = await supabase
+        .from("tournaments")
+        .delete()
+        .eq("id", currentTournament.id);
+        
+      if (error) throw error;
       
       toast({
         title: "Tournament Deleted",
-        description: "The tournament has been successfully deleted.",
+        description: `${currentTournament.name} has been deleted successfully.`,
       });
       
-      setTournaments(tournaments.filter(tournament => tournament.id !== tournamentToDelete));
+      setIsDeleteDialogOpen(false);
+      fetchTournaments();
     } catch (error) {
       console.error("Error deleting tournament:", error);
       toast({
         title: "Delete Failed",
-        description: "There was a problem deleting the tournament.",
+        description: "There was an error deleting the tournament.",
         variant: "destructive",
       });
     } finally {
-      setIsDeleteDialogOpen(false);
-      setTournamentToDelete(null);
+      setIsSubmitting(false);
     }
   };
-  
-  const handleInputChange = (field: string, value: any) => {
-    if (!selectedTournament) return;
+
+  // Update tournament status
+  const handleUpdateStatus = async () => {
+    if (!currentTournament || newStatus === currentTournament.status) return;
     
-    setSelectedTournament({
-      ...selectedTournament,
-      [field]: value
-    });
-  };
-
-  // Function to format the date for display
-  const formatDisplayDate = (date: string) => {
+    setIsSubmitting(true);
     try {
-      const dateObj = new Date(date);
-      if (isNaN(dateObj.getTime())) {
-        return date; // Return original if invalid
+      const updates: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // If changing to completed, set end_date to now if not already set
+      if (newStatus === "completed" && !currentTournament.end_date) {
+        updates.end_date = new Date().toISOString();
       }
       
-      const now = new Date();
-      const tournamentDate = new Date(date);
+      const { error } = await supabase
+        .from("tournaments")
+        .update(updates)
+        .eq("id", currentTournament.id);
+        
+      if (error) throw error;
       
-      // Check if tournament is live (today)
-      if (tournamentDate.toDateString() === now.toDateString()) {
-        return "Live Now";
-      }
+      toast({
+        title: "Status Updated",
+        description: `${currentTournament.name} is now ${newStatus}.`,
+      });
       
-      // Check if tournament is completed (past)
-      if (tournamentDate < now) {
-        return `Completed on ${format(tournamentDate, "MMM d")}`;
-      }
-      
-      // Future tournament
-      return format(dateObj, "MMM d, yyyy • h:mm a");
+      setIsStatusDialogOpen(false);
+      fetchTournaments();
     } catch (error) {
-      return date;
+      console.error("Error updating status:", error);
+      toast({
+        title: "Update Failed",
+        description: "There was an error updating the tournament status.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-[80vh]">
-          <LoadingSpinner />
-        </div>
-      </AdminLayout>
-    );
-  }
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "upcoming":
+        return "bg-blue-500/20 text-blue-500";
+      case "live":
+        return "bg-green-500/20 text-green-500";
+      case "completed":
+        return "bg-gray-500/20 text-gray-500";
+      case "cancelled":
+        return "bg-red-500/20 text-red-500";
+      default:
+        return "bg-gray-500/20 text-gray-500";
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM dd, yyyy");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
 
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             className="flex items-center text-gray-400 hover:text-white mr-4"
             onClick={() => navigate(-1)}
@@ -247,408 +347,429 @@ const AdminTournaments = () => {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold text-white">Manage Tournaments</h1>
+          <h1 className="text-2xl font-bold text-white">Tournaments</h1>
         </div>
-        
-        <Button 
-          onClick={handleCreateTournament}
-          className="bg-esports-accent hover:bg-esports-accent/80 text-white"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Tournament
-        </Button>
+        <div className="flex gap-2">
+          <RefreshButton onRefresh={fetchTournaments} />
+          <Button
+            onClick={() => navigate("/admin/create-tournament")}
+            className="bg-esports-accent hover:bg-esports-accent/80 text-white"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Tournament
+          </Button>
+        </div>
       </div>
-      
+
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div>
-          <InputWithIcon
-            placeholder="Search tournaments..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-esports-dark border-esports-accent/20 text-white"
-            icon={<Search className="h-4 w-4" />}
-          />
-        </div>
-        <div>
-          <Select
-            value={gameFilter}
-            onValueChange={setGameFilter}
-          >
-            <SelectTrigger className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectValue placeholder="Filter by Game" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectItem value="all">All Games</SelectItem>
-              <SelectItem value="BGMI">BGMI</SelectItem>
-              <SelectItem value="Valorant">Valorant</SelectItem>
-              <SelectItem value="COD">COD</SelectItem>
-              <SelectItem value="FreeFire">Free Fire</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-          >
-            <SelectTrigger className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectValue placeholder="Filter by Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="live">Live</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal border-esports-accent/20 bg-esports-dark text-white",
-                  !dateFilter && "text-gray-400"
-                )}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                {dateFilter ? format(dateFilter, "PPP") : "Filter by Date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-esports-dark border-esports-accent/20">
-              <CalendarComponent
-                mode="single"
-                selected={dateFilter}
-                onSelect={setDateFilter}
-                initialFocus
-                className="bg-esports-dark text-white"
-              />
-              {dateFilter && (
-                <div className="p-3 border-t border-esports-accent/20">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setDateFilter(undefined)}
-                    className="w-full text-white"
-                  >
-                    Clear Date Filter
-                  </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-      
-      {/* Tournament List */}
-      <div className="space-y-4">
-        {filteredTournaments.length > 0 ? (
-          filteredTournaments.map((tournament) => (
-            <Card key={tournament.id} className="bg-esports-dark border-esports-accent/20">
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      <Badge variant="outline" className="bg-esports-dark/80 text-white border-esports-accent/30">
-                        {tournament.game}
-                      </Badge>
-                      <Badge variant="outline" className={`
-                        ${tournament.status === 'live' ? 'bg-esports-green/20 text-esports-green' : tournament.status === 'upcoming' ? 'bg-amber-400/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'} 
-                        border-none
-                      `}>
-                        {tournament.status === "live" && <span className="mr-1.5 w-2 h-2 bg-esports-green rounded-full inline-block animate-pulse"></span>}
-                        {tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}
-                      </Badge>
-                      <Badge variant="outline" className={`
-                        ${!tournament.entry_fee || tournament.entry_fee === 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'} 
-                        border-none
-                      `}>
-                        {!tournament.entry_fee || tournament.entry_fee === 0 ? "Free Entry" : `${tournament.entry_fee} rdCoins`}
-                      </Badge>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold font-rajdhani mb-4 text-white">
-                      {tournament.name}
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center text-sm text-gray-300">
-                        <CalendarCheck className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>{formatDisplayDate(tournament.start_date)}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-gray-300">
-                        <Users className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>0 / {tournament.max_teams} slots</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-gray-300">
-                        <Trophy className="h-4 w-4 mr-2 text-esports-accent" />
-                        <span>Prize pool: {tournament.prize_pool} rdCoins</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center mt-4 md:mt-0 space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
-                      onClick={() => handleEditTournament(tournament.id)}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
-                      onClick={() => handleDeleteTournament(tournament.id)}
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-400">No tournaments match your filters.</p>
+      <Card className="bg-esports-dark border-esports-accent/20 mb-6">
+        <CardHeader className="px-6 py-4">
+          <CardTitle className="text-white">Filter Tournaments</CardTitle>
+          <CardDescription>Narrow down results by search, status, or game</CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-4 pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="search" className="text-gray-300">Search</Label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="search"
+                  placeholder="Search by name or game..."
+                  className="pl-10 bg-esports-darker border-esports-accent/20 text-white"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="status" className="text-gray-300">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger 
+                  id="status" 
+                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                >
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="live">Live</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="game" className="text-gray-300">Game</Label>
+              <Select value={gameFilter} onValueChange={setGameFilter}>
+                <SelectTrigger 
+                  id="game" 
+                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                >
+                  <SelectValue placeholder="Filter by game" />
+                </SelectTrigger>
+                <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                  <SelectItem value="all">All Games</SelectItem>
+                  {uniqueGames.map((game) => (
+                    <SelectItem key={game} value={game}>
+                      {game}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-      </div>
-      
+        </CardContent>
+      </Card>
+
+      {/* Tournaments Table */}
+      <Card className="bg-esports-dark border-esports-accent/20">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : filteredTournaments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-gray-700">
+                    <TableHead className="text-gray-400">Name</TableHead>
+                    <TableHead className="text-gray-400">Game</TableHead>
+                    <TableHead className="text-gray-400">Status</TableHead>
+                    <TableHead className="text-gray-400">Prize Pool</TableHead>
+                    <TableHead className="text-gray-400">Teams</TableHead>
+                    <TableHead className="text-gray-400">Start Date</TableHead>
+                    <TableHead className="text-gray-400">End Date</TableHead>
+                    <TableHead className="text-gray-400 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTournaments.map((tournament) => (
+                    <TableRow key={tournament.id} className="border-b border-gray-700">
+                      <TableCell className="font-medium text-white">
+                        {tournament.name}
+                      </TableCell>
+                      <TableCell>{tournament.game}</TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`${getStatusColor(tournament.status)} font-normal cursor-pointer`}
+                          onClick={() => handleStatusClick(tournament)}
+                        >
+                          {tournament.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{tournament.prize_pool} rdCoins</TableCell>
+                      <TableCell>{tournament.max_teams}</TableCell>
+                      <TableCell>{formatDate(tournament.start_date)}</TableCell>
+                      <TableCell>{formatDate(tournament.end_date)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClick(tournament)}
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-900/20"
+                          >
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit tournament</span>
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(tournament)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete tournament</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-400">No tournaments found matching your filters.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Edit Tournament Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        {selectedTournament && (
-          <DialogContent className="bg-esports-dark text-white border-esports-accent/20 max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Edit Tournament</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Make changes to the tournament details below.
-              </DialogDescription>
-            </DialogHeader>
-            
+        <DialogContent className="bg-esports-dark text-white border-esports-accent/20 max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Tournament</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Update tournament details below.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="title" className="text-white">Tournament Title</Label>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-white">Tournament Name</Label>
                 <Input
-                  id="title"
-                  value={selectedTournament.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
                 />
               </div>
               
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="game" className="text-white">Game</Label>
-                <Select
-                  value={selectedTournament.game}
-                  onValueChange={(value) => handleInputChange("game", value)}
-                >
-                  <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white mt-1">
-                    <SelectValue placeholder="Select game" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                    <SelectItem value="BGMI">BGMI</SelectItem>
-                    <SelectItem value="Valorant">Valorant</SelectItem>
-                    <SelectItem value="COD">COD Mobile</SelectItem>
-                    <SelectItem value="FreeFire">Free Fire</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="game"
+                  name="game"
+                  value={formData.game}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
+                />
               </div>
               
-              <div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="description" className="text-white">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white min-h-[100px]"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="max_teams" className="text-white">Maximum Teams</Label>
+                <Input
+                  id="max_teams"
+                  name="max_teams"
+                  type="number"
+                  min="1"
+                  value={formData.max_teams}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="prize_pool" className="text-white">Prize Pool (rdCoins)</Label>
+                <Input
+                  id="prize_pool"
+                  name="prize_pool"
+                  type="number"
+                  min="0"
+                  value={formData.prize_pool}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="entry_fee" className="text-white">Entry Fee (rdCoins)</Label>
+                <Input
+                  id="entry_fee"
+                  name="entry_fee"
+                  type="number"
+                  min="0"
+                  value={formData.entry_fee}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
+                />
+              </div>
+              
+              <div className="space-y-2">
                 <Label htmlFor="status" className="text-white">Status</Label>
-                <Select
-                  value={selectedTournament.status}
-                  onValueChange={(value) => handleInputChange("status", value)}
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
                 >
-                  <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white mt-1">
+                  <SelectTrigger 
+                    id="status" 
+                    className="bg-esports-darker border-esports-accent/20 text-white"
+                  >
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
                     <SelectItem value="upcoming">Upcoming</SelectItem>
                     <SelectItem value="live">Live</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
-              <div>
-                <Label htmlFor="date" className="text-white">Start Date</Label>
+              <div className="space-y-2">
+                <Label htmlFor="start_date" className="text-white">Start Date</Label>
                 <Input
-                  id="date"
+                  id="start_date"
+                  name="start_date"
                   type="datetime-local"
-                  value={selectedTournament.start_date ? new Date(selectedTournament.start_date).toISOString().slice(0, 16) : ""}
-                  onChange={(e) => handleInputChange("start_date", e.target.value)}
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                  value={formData.start_date ? formData.start_date.slice(0, 16) : ""}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
                 />
               </div>
               
-              <div>
-                <Label htmlFor="entryFeeType" className="text-white">Entry Fee (rdCoins)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="end_date" className="text-white">End Date</Label>
                 <Input
-                  id="entryFee"
-                  type="number"
-                  value={selectedTournament.entry_fee || 0}
-                  onChange={(e) => handleInputChange("entry_fee", parseInt(e.target.value) || 0)}
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+                  id="end_date"
+                  name="end_date"
+                  type="datetime-local"
+                  value={formData.end_date ? formData.end_date.slice(0, 16) : ""}
+                  onChange={handleInputChange}
+                  className="bg-esports-darker border-esports-accent/20 text-white"
                 />
               </div>
-              
-              <div>
-                <Label htmlFor="prizePool" className="text-white">Prize Pool (rdCoins)</Label>
-                <Input
-                  id="prizePool"
-                  type="number"
-                  value={selectedTournament.prize_pool || 0}
-                  onChange={(e) => handleInputChange("prize_pool", parseInt(e.target.value) || 0)}
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="maxSlots" className="text-white">Max Slots</Label>
-                <Input
-                  id="maxSlots"
-                  type="number"
-                  value={selectedTournament.max_teams}
-                  onChange={(e) => handleInputChange("max_teams", parseInt(e.target.value) || 0)}
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                />
-              </div>
-              
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="distributeToTopThree" 
-                    checked={distributeToTopThree}
-                    onCheckedChange={(checked) => {
-                      setDistributeToTopThree(checked === true);
-                      if (checked) {
-                        // Set default values for prize distribution
-                        const total = selectedTournament.prize_pool || 0;
-                        handleInputChange("firstPlace", Math.round(total * 0.5));
-                        handleInputChange("secondPlace", Math.round(total * 0.3));
-                        handleInputChange("thirdPlace", Math.round(total * 0.2));
-                      } else {
-                        // If unchecked, remove second and third place prizes
-                        handleInputChange("secondPlace", undefined);
-                        handleInputChange("thirdPlace", undefined);
-                        handleInputChange("firstPlace", selectedTournament.prize_pool);
-                      }
-                    }}
-                  />
-                  <Label 
-                    htmlFor="distributeToTopThree"
-                    className="text-white font-medium"
-                  >
-                    Distribute prize among top 3 teams
-                  </Label>
-                </div>
-                <p className="mt-1 text-sm text-gray-400 ml-6">
-                  If unchecked, all prize money goes to the winner
-                </p>
-              </div>
-              
-              {distributeToTopThree && (
-                <div className="col-span-1 md:col-span-2">
-                  <Card className="bg-esports-darker border-esports-accent/20 p-4">
-                    <h3 className="text-white font-semibold mb-4">Prize Distribution</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="firstPlacePrize" className="text-white">1st Place (rdCoins)</Label>
-                        <Input
-                          id="firstPlacePrize"
-                          type="number"
-                          value={selectedTournament.firstPlace || ""}
-                          onChange={(e) => handleInputChange("firstPlace", parseInt(e.target.value) || 0)}
-                          className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="secondPlacePrize" className="text-white">2nd Place (rdCoins)</Label>
-                        <Input
-                          id="secondPlacePrize"
-                          type="number"
-                          value={selectedTournament.secondPlace || ""}
-                          onChange={(e) => handleInputChange("secondPlace", parseInt(e.target.value) || 0)}
-                          className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="thirdPlacePrize" className="text-white">3rd Place (rdCoins)</Label>
-                        <Input
-                          id="thirdPlacePrize"
-                          type="number"
-                          value={selectedTournament.thirdPlace || ""}
-                          onChange={(e) => handleInputChange("thirdPlace", parseInt(e.target.value) || 0)}
-                          className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                        />
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              )}
             </div>
-            
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setIsEditDialogOpen(false)}
-                className="text-white"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleSaveEdit}
-                className="bg-esports-accent hover:bg-esports-accent/80"
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Are you sure you want to delete this tournament? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
+          </div>
+          
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => setIsDeleteDialogOpen(false)}
+              onClick={() => setIsEditDialogOpen(false)}
               className="text-white"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
+              onClick={handleSaveTournament}
+              className="bg-esports-accent hover:bg-esports-accent/80"
+              disabled={isSubmitting}
             >
-              Delete Tournament
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-esports-dark text-white border-esports-accent/20">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Are you sure you want to delete the tournament{" "}
+              <span className="font-semibold text-white">
+                {currentTournament?.name}
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="bg-transparent text-white hover:bg-esports-darker"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteTournament();
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent className="bg-esports-dark text-white border-esports-accent/20">
+          <DialogHeader>
+            <DialogTitle>Update Tournament Status</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Change the status of {currentTournament?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Label htmlFor="newStatus" className="text-white">Status</Label>
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger 
+                id="newStatus" 
+                className="bg-esports-darker border-esports-accent/20 text-white mt-1"
+              >
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                <SelectItem value="upcoming">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                    <span>Upcoming</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="live">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span>Live</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="completed">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-gray-500" />
+                    <span>Completed</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="cancelled">
+                  <div className="flex items-center gap-2">
+                    <X className="h-4 w-4 text-red-500" />
+                    <span>Cancelled</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {newStatus === "completed" && !currentTournament?.winner && (
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full border-[#1977d4]/30 text-white hover:text-[#1977d4]"
+                  onClick={() => {
+                    setIsStatusDialogOpen(false);
+                    navigate(`/admin/update-winners?tournament=${currentTournament?.id}`);
+                  }}
+                >
+                  <Flag className="mr-2 h-4 w-4" />
+                  Set Tournament Winners
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setIsStatusDialogOpen(false)}
+              className="text-white"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateStatus}
+              className="bg-esports-accent hover:bg-esports-accent/80"
+              disabled={isSubmitting || newStatus === currentTournament?.status}
+            >
+              {isSubmitting ? "Updating..." : "Update Status"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>
   );
-};
-
-export default AdminTournaments;
+}

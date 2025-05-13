@@ -73,6 +73,9 @@ export const fetchActivityLogs = async (): Promise<ActivityLogWithUser[]> => {
     if (logsError) throw logsError;
     if (!logs) return [];
     
+    // Prepare result array
+    const result: ActivityLogWithUser[] = [];
+    
     // Get unique user IDs from the logs
     const userIds = logs
       .map(log => log.user_id)
@@ -96,10 +99,14 @@ export const fetchActivityLogs = async (): Promise<ActivityLogWithUser[]> => {
     }
     
     // Combine logs with user data
-    return logs.map(log => ({
-      ...log,
-      user: log.user_id ? usersMap[log.user_id] : undefined
-    }));
+    for (const log of logs) {
+      result.push({
+        ...log,
+        user: log.user_id ? usersMap[log.user_id] : undefined
+      });
+    }
+    
+    return result;
     
   } catch (error) {
     console.error('Error fetching activity logs:', error);
@@ -141,4 +148,30 @@ export const clearOldActivityLogs = async (days = 30): Promise<boolean> => {
     });
     return false;
   }
+};
+
+// Helper function to set up real-time subscription
+export const subscribeToActivityLogs = (callback: (logs: ActivityLogWithUser[]) => void) => {
+  // Initial fetch
+  fetchActivityLogs().then(callback);
+  
+  // Set up real-time subscription
+  const channel = supabase
+    .channel('public:activity_logs')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'activity_logs'
+      },
+      () => {
+        fetchActivityLogs().then(callback);
+      }
+    )
+    .subscribe();
+  
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
