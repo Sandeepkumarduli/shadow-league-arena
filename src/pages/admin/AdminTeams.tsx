@@ -67,7 +67,7 @@ const AdminTeams = () => {
           .select('count', { count: 'exact' })
           .eq('team_id', team.id);
         
-        const membersCount = !membersError ? membersData || 0 : 0;
+        const membersCount = !membersError ? (membersData as number || 0) : 0;
         
         // Count tournaments participated
         const { data: tournamentsData, error: tournamentsError } = await supabase
@@ -75,7 +75,7 @@ const AdminTeams = () => {
           .select('count', { count: 'exact' })
           .eq('team_id', team.id);
         
-        const tournamentsCount = !tournamentsError ? tournamentsData || 0 : 0;
+        const tournamentsCount = !tournamentsError ? (tournamentsData as number || 0) : 0;
         
         // Count wins (tournament results where position = 1)
         const { data: winsData, error: winsError } = await supabase
@@ -84,7 +84,7 @@ const AdminTeams = () => {
           .eq('team_id', team.id)
           .eq('position', 1);
         
-        const winsCount = !winsError ? winsData || 0 : 0;
+        const winsCount = !winsError ? (winsData as number || 0) : 0;
         
         return {
           ...team,
