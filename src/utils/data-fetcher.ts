@@ -32,32 +32,34 @@ export async function fetchData<T = any>(
       join,
     } = options;
 
-    // Build the query with explicit typing
-    const query = supabase
+    // Build the initial query to avoid type recursion
+    const selectQuery = supabase
       .from(tableName)
       .select(join ? `${columns}, ${join}` : columns);
-
-    // Apply filters
+    
+    // Apply filters without reassignment
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        query.eq(key, value);
+        selectQuery.eq(key, value);
       }
     });
 
-    // Apply ordering
+    // Apply ordering if specified
     if (orderBy) {
-      query.order(orderBy.column, {
+      selectQuery.order(orderBy.column, {
         ascending: orderBy.ascending !== false,
       });
     }
 
-    // Apply limit
+    // Apply limit if specified
     if (limit) {
-      query.limit(limit);
+      selectQuery.limit(limit);
     }
 
-    // Execute query
-    const { data, error } = single ? await query.single() : await query;
+    // Execute query with appropriate method
+    const { data, error } = single 
+      ? await selectQuery.single() 
+      : await selectQuery;
 
     if (error) {
       throw error;
