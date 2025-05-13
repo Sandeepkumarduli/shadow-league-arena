@@ -14,32 +14,12 @@ export interface ActivityLog {
   username?: string;
 }
 
-// Interface for user data returned with activity logs
-interface UserData {
-  username: string;
-}
-
-// Activity log data with joined user data
-interface ActivityLogWithUser {
-  id: string;
-  type: string;
-  action: string;
-  details: string;
-  user_id?: string;
-  created_at: string;
-  metadata?: any;
-  users?: UserData | null;
-}
-
 // Fetch activity logs with optional filters
 export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<ActivityLog[]> => {
   try {
     let query = supabase
       .from('activity_logs')
-      .select(`
-        *,
-        users:user_id (username)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
     
     // Apply filters if provided
@@ -47,9 +27,11 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           if (key === 'type' && value !== 'all') {
-            query = query.eq('type', value);
+            // Use type assertion to help TypeScript
+            (query as any).eq('type', value);
           } else if (key !== 'type') {
-            query = query.eq(key, value);
+            // Use type assertion to help TypeScript
+            (query as any).eq(key, value);
           }
         }
       });
@@ -59,11 +41,31 @@ export const fetchActivityLogs = async (filters?: Record<string, any>): Promise<
     
     if (error) throw error;
     
-    // Transform the data to include the username from the nested users object
-    return data ? data.map((log: ActivityLogWithUser) => ({
+    // Get usernames for user_ids
+    const userIds = data
+      ?.filter(log => log.user_id)
+      .map(log => log.user_id) || [];
+    
+    let usernameMap: Record<string, string> = {};
+    
+    if (userIds.length > 0) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, username')
+        .in('id', userIds);
+        
+      if (!userError && userData) {
+        usernameMap = userData.reduce((acc, user) => {
+          acc[user.id] = user.username;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+    }
+    
+    // Transform the data to include the username
+    return data ? data.map(log => ({
       ...log,
-      username: log.users?.username,
-      users: undefined // Remove the nested users object
+      username: log.user_id ? usernameMap[log.user_id] : undefined
     })) : [];
   } catch (error) {
     console.error('Error fetching activity logs:', error);
