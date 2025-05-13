@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Coins, Send, Download, FileDown, FileText, User, Calendar, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Search, Coins, Send, Download, FileDown, User, Calendar, Plus, Minus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -33,74 +33,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Sample transaction data
-const transactionsData = [
-  {
-    id: "1",
-    username: "FireHawk22",
-    type: "credit",
-    amount: 1000,
-    description: "Tournament prize winning",
-    date: "2023-05-10 14:30:22"
-  },
-  {
-    id: "2",
-    username: "ThunderBolt",
-    type: "debit",
-    amount: 500,
-    description: "Tournament entry fee",
-    date: "2023-05-09 10:15:45"
-  },
-  {
-    id: "3",
-    username: "StormRider",
-    type: "credit",
-    amount: 2000,
-    description: "Added via Razorpay",
-    date: "2023-05-08 18:22:10"
-  },
-  {
-    id: "4",
-    username: "ShadowNinja",
-    type: "debit",
-    amount: 800,
-    description: "Withdrawal requested",
-    date: "2023-05-07 09:45:36"
-  },
-  {
-    id: "5",
-    username: "ViperStrike",
-    type: "credit",
-    amount: 1500,
-    description: "Admin adjustment",
-    date: "2023-05-06 16:12:55"
-  }
-];
-
-// Sample users data for selection
-const usersList = [
-  { id: "1", username: "FireHawk22" },
-  { id: "2", username: "StormRider" },
-  { id: "3", username: "ShadowNinja" },
-  { id: "4", username: "ThunderBolt" },
-  { id: "5", username: "ViperStrike" },
-  { id: "6", username: "RazorGamer" },
-  { id: "7", username: "NinjaWarrior" },
-  { id: "8", username: "PhoenixSlayer" }
-];
+import {
+  AdminWallet,
+  Transaction,
+  fetchAdminWallet,
+  fetchTransactions,
+  subscribeAdminWallet,
+  subscribeTransactions,
+  addFundsToAdminWallet,
+  adjustUserBalance
+} from "@/services/adminWalletService";
+import { User, fetchUsers } from "@/services/userService";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const AdminCoins = () => {
   const navigate = useNavigate();
-  const [transactions, setTransactions] = useState(transactionsData);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [isAddToBankDialogOpen, setIsAddToBankDialogOpen] = useState(false);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [loadingWallet, setLoadingWallet] = useState(true);
   
   // Admin wallet balance
-  const [adminBalance, setAdminBalance] = useState(50000);
+  const [adminWallet, setAdminWallet] = useState<AdminWallet | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   
   // Form states
   const [username, setUsername] = useState("");
@@ -111,6 +70,29 @@ const AdminCoins = () => {
   // Add to bank form state
   const [addAmount, setAddAmount] = useState("");
   const [addSource, setAddSource] = useState("admin_deposit");
+
+  // Load data
+  useEffect(() => {
+    // Fetch users
+    fetchUsers().then(setUsers);
+    
+    // Subscribe to admin wallet changes
+    const unsubscribeWallet = subscribeAdminWallet((wallet) => {
+      setAdminWallet(wallet);
+      setLoadingWallet(false);
+    });
+    
+    // Subscribe to transaction changes
+    const unsubscribeTransactions = subscribeTransactions((fetchedTransactions) => {
+      setTransactions(fetchedTransactions);
+      setLoadingTransactions(false);
+    });
+    
+    return () => {
+      unsubscribeWallet();
+      unsubscribeTransactions();
+    };
+  }, []);
   
   // Filter transactions based on search and type
   const filteredTransactions = transactions.filter(transaction => {
@@ -118,12 +100,12 @@ const AdminCoins = () => {
     if (typeFilter !== "all" && transaction.type !== typeFilter) return false;
     
     // Apply search query on username
-    if (searchQuery && !transaction.username.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && transaction.user?.username && !transaction.user.username.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     
     return true;
   });
   
-  const handleAdjustBalance = () => {
+  const handleAdjustBalance = async () => {
     if (!username.trim()) {
       toast({
         title: "Error",
@@ -143,7 +125,7 @@ const AdminCoins = () => {
     }
     
     // Check if admin has enough balance for transfer
-    if (isTransferDialogOpen && parseInt(amount) > adminBalance) {
+    if (isTransferDialogOpen && adjustmentType === "credit" && adminWallet && parseInt(amount) > adminWallet.balance) {
       toast({
         title: "Insufficient Balance",
         description: "Admin wallet does not have enough coins for this transfer.",
@@ -152,41 +134,34 @@ const AdminCoins = () => {
       return;
     }
     
-    // Create a new transaction
-    const newTransaction = {
-      id: (transactions.length + 1).toString(),
-      username,
-      type: adjustmentType,
-      amount: parseInt(amount),
-      description: description || `Admin ${adjustmentType === "credit" ? "added" : "deducted"} coins`,
-      date: new Date().toLocaleString()
-    };
-    
-    // Update transactions
-    setTransactions([newTransaction, ...transactions]);
-    
-    // Update admin balance if it's a transfer
-    if (isTransferDialogOpen) {
-      if (adjustmentType === "credit") {
-        setAdminBalance(adminBalance - parseInt(amount));
-      } else {
-        setAdminBalance(adminBalance + parseInt(amount));
-      }
+    const userId = users.find(user => user.username === username)?.id;
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "User not found.",
+        variant: "destructive",
+      });
+      return;
     }
     
-    // Show success message
-    toast({
-      title: "Balance Adjusted",
-      description: `${adjustmentType === "credit" ? "Added" : "Deducted"} ${amount} rdCoins ${adjustmentType === "credit" ? "to" : "from"} ${username}.`,
-    });
+    // Call the appropriate function based on dialog type
+    const success = await adjustUserBalance(
+      userId, 
+      parseInt(amount), 
+      adjustmentType, 
+      description,
+      isTransferDialogOpen // fromAdminWallet flag
+    );
     
-    // Reset form and close dialog
-    resetForm();
-    setIsAdjustDialogOpen(false);
-    setIsTransferDialogOpen(false);
+    if (success) {
+      // Reset form and close dialog
+      resetForm();
+      setIsAdjustDialogOpen(false);
+      setIsTransferDialogOpen(false);
+    }
   };
   
-  const handleAddToBank = () => {
+  const handleAddToBank = async () => {
     if (!addAmount || parseInt(addAmount) <= 0) {
       toast({
         title: "Error",
@@ -196,29 +171,13 @@ const AdminCoins = () => {
       return;
     }
     
-    // Update admin balance
-    setAdminBalance(adminBalance + parseInt(addAmount));
+    const success = await addFundsToAdminWallet(parseInt(addAmount), addSource);
     
-    // Create a new transaction record
-    const newTransaction = {
-      id: (transactions.length + 1).toString(),
-      username: "AdminWallet",
-      type: "credit",
-      amount: parseInt(addAmount),
-      description: `Admin bank deposit: ${addSource}`,
-      date: new Date().toLocaleString()
-    };
-    
-    setTransactions([newTransaction, ...transactions]);
-    
-    toast({
-      title: "Bank Balance Updated",
-      description: `Added ${addAmount} rdCoins to the admin wallet.`,
-    });
-    
-    setAddAmount("");
-    setAddSource("admin_deposit");
-    setIsAddToBankDialogOpen(false);
+    if (success) {
+      setAddAmount("");
+      setAddSource("admin_deposit");
+      setIsAddToBankDialogOpen(false);
+    }
   };
   
   const resetForm = () => {
@@ -229,6 +188,29 @@ const AdminCoins = () => {
   };
   
   const handleExportReport = () => {
+    // Generate CSV content
+    const headers = ["Username", "Type", "Amount", "Description", "Date"];
+    const csvContent = [
+      headers.join(","),
+      ...transactions.map(t => [
+        t.user?.username || "System",
+        t.type,
+        t.amount,
+        `"${t.description || ""}"`,
+        new Date(t.created_at).toLocaleString()
+      ].join(","))
+    ].join("\n");
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast({
       title: "Report Exported",
       description: "The transactions report has been exported successfully.",
@@ -284,32 +266,40 @@ const AdminCoins = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-500">
-              {adminBalance.toLocaleString()} <span className="text-base">rdCoins</span>
-            </div>
-            <div className="mt-2 flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
-                onClick={() => {
-                  setAdjustmentType("credit");
-                  setIsTransferDialogOpen(true);
-                }}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Transfer to User
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-green-500/20 text-green-400 hover:bg-green-500/10"
-                onClick={() => setIsAddToBankDialogOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Funds
-              </Button>
-            </div>
+            {loadingWallet ? (
+              <div className="flex justify-center py-2">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-yellow-500">
+                  {adminWallet?.balance.toLocaleString() || 0} <span className="text-base">rdCoins</span>
+                </div>
+                <div className="mt-2 flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
+                    onClick={() => {
+                      setAdjustmentType("credit");
+                      setIsTransferDialogOpen(true);
+                    }}
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Transfer to User
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-green-500/20 text-green-400 hover:bg-green-500/10"
+                    onClick={() => setIsAddToBankDialogOpen(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Funds
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -318,23 +308,35 @@ const AdminCoins = () => {
             <CardTitle className="text-white text-lg">Today's Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-esports-accent">
-              {transactions.length}
-            </div>
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center">
-                <Badge className="bg-green-600/20 text-green-400 border-none">
-                  <Plus className="mr-1 h-3 w-3" /> 
-                  {transactions.filter(t => t.type === "credit").length}
-                </Badge>
+            {loadingTransactions ? (
+              <div className="flex justify-center py-2">
+                <LoadingSpinner />
               </div>
-              <div className="flex items-center">
-                <Badge className="bg-red-900/20 text-red-500 border-none">
-                  <Minus className="mr-1 h-3 w-3" />
-                  {transactions.filter(t => t.type === "debit").length}
-                </Badge>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-esports-accent">
+                  {transactions.filter(t => {
+                    const today = new Date();
+                    const transactionDate = new Date(t.created_at);
+                    return today.toDateString() === transactionDate.toDateString();
+                  }).length}
+                </div>
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="flex items-center">
+                    <Badge className="bg-green-600/20 text-green-400 border-none">
+                      <Plus className="mr-1 h-3 w-3" /> 
+                      {transactions.filter(t => t.type === "credit").length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center">
+                    <Badge className="bg-red-900/20 text-red-500 border-none">
+                      <Minus className="mr-1 h-3 w-3" />
+                      {transactions.filter(t => t.type === "debit").length}
+                    </Badge>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -343,12 +345,20 @@ const AdminCoins = () => {
             <CardTitle className="text-white text-lg">Total Volume</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-esports-accent">
-              {transactions.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
-            </div>
-            <p className="text-gray-400 text-sm mt-1">
-              rdCoins transacted
-            </p>
+            {loadingTransactions ? (
+              <div className="flex justify-center py-2">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-esports-accent">
+                  {transactions.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                </div>
+                <p className="text-gray-400 text-sm mt-1">
+                  rdCoins transacted
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -387,7 +397,11 @@ const AdminCoins = () => {
           <CardTitle className="text-white">Recent Transactions</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredTransactions.length > 0 ? (
+          {loadingTransactions ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : filteredTransactions.length > 0 ? (
             <div className="rounded-md border border-esports-accent/20 overflow-hidden">
               <Table>
                 <TableHeader className="bg-esports-darker">
@@ -403,7 +417,7 @@ const AdminCoins = () => {
                   {filteredTransactions.map((transaction) => (
                     <TableRow key={transaction.id} className="hover:bg-esports-darker border-esports-accent/20">
                       <TableCell className="font-medium text-white">
-                        {transaction.username}
+                        {transaction.user?.username || "System"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -420,10 +434,10 @@ const AdminCoins = () => {
                         {transaction.type === "credit" ? "+" : "-"}{transaction.amount}
                       </TableCell>
                       <TableCell className="text-gray-300 hidden md:table-cell">
-                        {transaction.description}
+                        {transaction.description || "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-300 hidden md:table-cell">
-                        {transaction.date}
+                        {new Date(transaction.created_at).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -458,7 +472,7 @@ const AdminCoins = () => {
                   <SelectValue placeholder="Select username" />
                 </SelectTrigger>
                 <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                  {usersList.map(user => (
+                  {users.map(user => (
                     <SelectItem key={user.id} value={user.username}>
                       {user.username}
                     </SelectItem>
@@ -550,7 +564,7 @@ const AdminCoins = () => {
             <div className="bg-esports-darker p-3 rounded-md">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Admin Wallet Balance:</span>
-                <span className="text-yellow-500 font-bold">{adminBalance} rdCoins</span>
+                <span className="text-yellow-500 font-bold">{adminWallet?.balance.toLocaleString() || 0} rdCoins</span>
               </div>
             </div>
             
@@ -563,7 +577,7 @@ const AdminCoins = () => {
                   <SelectValue placeholder="Select username" />
                 </SelectTrigger>
                 <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
-                  {usersList.map(user => (
+                  {users.map(user => (
                     <SelectItem key={user.id} value={user.username}>
                       {user.username}
                     </SelectItem>
@@ -580,18 +594,18 @@ const AdminCoins = () => {
                 id="amount"
                 type="number"
                 min="1"
-                max={adminBalance.toString()}
+                max={adminWallet?.balance.toString()}
                 placeholder="Enter amount"
                 className="bg-esports-darker border-esports-accent/20 text-white"
                 value={amount}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
-                  if (!val || val <= adminBalance) {
+                  if (!val || (adminWallet && val <= adminWallet.balance)) {
                     setAmount(e.target.value);
                   }
                 }}
               />
-              {parseInt(amount) > adminBalance && (
+              {parseInt(amount) > (adminWallet?.balance || 0) && (
                 <p className="text-red-500 text-xs mt-1">
                   Amount exceeds available balance.
                 </p>
@@ -626,7 +640,7 @@ const AdminCoins = () => {
             <Button
               variant="default"
               onClick={handleAdjustBalance}
-              disabled={!amount || parseInt(amount) <= 0 || parseInt(amount) > adminBalance}
+              disabled={!amount || parseInt(amount) <= 0 || parseInt(amount) > (adminWallet?.balance || 0)}
               className="bg-esports-accent hover:bg-esports-accent/80"
             >
               Transfer Coins
@@ -649,7 +663,7 @@ const AdminCoins = () => {
             <div className="bg-esports-darker p-3 rounded-md">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Current Admin Balance:</span>
-                <span className="text-yellow-500 font-bold">{adminBalance} rdCoins</span>
+                <span className="text-yellow-500 font-bold">{adminWallet?.balance.toLocaleString() || 0} rdCoins</span>
               </div>
             </div>
             

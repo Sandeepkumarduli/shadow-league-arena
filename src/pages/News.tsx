@@ -6,52 +6,23 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
-interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  image_url: string | null;
-  created_at: string;
-  category?: string;
-}
+import { NewsItem, fetchNews, subscribeNewsChanges } from "@/services/newsService";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const News = () => {
   const navigate = useNavigate();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNews = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('news')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Ensure the data matches the NewsItem interface
-      const typedData = data as NewsItem[];
-      setNews(typedData || []);
-    } catch (error) {
-      console.error('Error fetching news:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load news. Please try again later.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchNews();
+    const unsubscribe = subscribeNewsChanges((fetchedNews) => {
+      setNews(fetchedNews);
+      setLoading(false);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   return (
@@ -71,7 +42,7 @@ const News = () => {
       
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-esports-accent"></div>
+          <LoadingSpinner />
         </div>
       ) : news.length === 0 ? (
         <div className="text-center p-8 bg-esports-dark rounded-lg border border-esports-accent/20">

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, XCircle, Shield, Calendar, User } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -15,44 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-
-// Sample admin requests data
-const adminRequestsData = [
-  {
-    id: "1",
-    username: "FireHawk22",
-    email: "firehawk22@example.com",
-    reason: "I would like to help manage BGMI tournaments and create new events for the community. I have experience organizing esports events.",
-    status: "pending",
-    requestedOn: "2023-05-01",
-  },
-  {
-    id: "2",
-    username: "StormRider",
-    email: "stormrider@example.com",
-    reason: "I want to help grow the Valorant community on this platform by creating and managing tournaments.",
-    status: "pending",
-    requestedOn: "2023-05-05",
-  },
-  {
-    id: "3",
-    username: "ThunderBolt",
-    email: "thunderbolt@example.com",
-    reason: "I am a content creator with a large following and would like to organize tournaments for my audience.",
-    status: "approved",
-    requestedOn: "2023-04-20",
-    processedOn: "2023-04-25"
-  },
-  {
-    id: "4",
-    username: "NightShadow",
-    email: "nightshadow@example.com",
-    reason: "I have experience as a tournament organizer in other platforms and would like to bring my expertise here.",
-    status: "rejected",
-    requestedOn: "2023-04-15",
-    processedOn: "2023-04-18"
-  }
-];
+import { 
+  AdminRequest, 
+  fetchAdminRequests, 
+  subscribeAdminRequests,
+  approveAdminRequest,
+  rejectAdminRequest
+} from "@/services/adminRequestsService";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const AdminRequests = () => {
   const navigate = useNavigate();
@@ -60,15 +30,23 @@ const AdminRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Filter requests based on status
-  const filteredRequests = adminRequestsData.filter(request => 
-    statusFilter === "all" || request.status === statusFilter
-  );
+  useEffect(() => {
+    const unsubscribe = subscribeAdminRequests((requests) => {
+      setAdminRequests(requests);
+      setLoading(false);
+    }, statusFilter);
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [statusFilter]);
   
   // Find selected request
   const requestDetails = selectedRequest 
-    ? adminRequestsData.find(req => req.id === selectedRequest) 
+    ? adminRequests.find(req => req.id === selectedRequest) 
     : null;
 
   const handleApproveRequest = (requestId: string) => {
@@ -81,30 +59,24 @@ const AdminRequests = () => {
     setIsRejectDialogOpen(true);
   };
   
-  const confirmApproval = () => {
+  const confirmApproval = async () => {
     if (!selectedRequest) return;
     
-    // In a real application, this would be an API call to approve the request
-    toast({
-      title: "Request Approved",
-      description: "The admin access request has been approved.",
-    });
+    const success = await approveAdminRequest(selectedRequest);
     
-    setIsApproveDialogOpen(false);
-    // In a real app, you would update the state or refetch the data
+    if (success) {
+      setIsApproveDialogOpen(false);
+    }
   };
   
-  const confirmRejection = () => {
+  const confirmRejection = async () => {
     if (!selectedRequest) return;
     
-    // In a real application, this would be an API call to reject the request
-    toast({
-      title: "Request Rejected",
-      description: "The admin access request has been rejected.",
-    });
+    const success = await rejectAdminRequest(selectedRequest);
     
-    setIsRejectDialogOpen(false);
-    // In a real app, you would update the state or refetch the data
+    if (success) {
+      setIsRejectDialogOpen(false);
+    }
   };
 
   return (
@@ -156,14 +128,18 @@ const AdminRequests = () => {
       
       {/* Requests List */}
       <div className="space-y-4">
-        {filteredRequests.length > 0 ? (
-          filteredRequests.map((request) => (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : adminRequests.length > 0 ? (
+          adminRequests.map((request) => (
             <Card key={request.id} className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-bold text-white">{request.username}</h3>
+                      <h3 className="text-lg font-bold text-white">{request.user?.username}</h3>
                       <Badge
                         variant="outline"
                         className={
@@ -180,14 +156,14 @@ const AdminRequests = () => {
                     
                     <div className="flex items-center text-sm text-gray-300 mb-2">
                       <User className="h-4 w-4 mr-2 text-esports-accent" />
-                      <span>{request.email}</span>
+                      <span>{request.user?.email}</span>
                     </div>
                     
                     <div className="flex items-center text-sm text-gray-300 mb-4">
                       <Calendar className="h-4 w-4 mr-2 text-esports-accent" />
-                      <span>Requested on {request.requestedOn}</span>
-                      {request.processedOn && (
-                        <span className="ml-4">Processed on {request.processedOn}</span>
+                      <span>Requested on {new Date(request.created_at).toLocaleDateString()}</span>
+                      {request.reviewed_at && (
+                        <span className="ml-4">Processed on {new Date(request.reviewed_at).toLocaleDateString()}</span>
                       )}
                     </div>
                     
@@ -235,7 +211,7 @@ const AdminRequests = () => {
             <DialogHeader>
               <DialogTitle className="text-lg">Approve Admin Request</DialogTitle>
               <DialogDescription className="text-gray-400">
-                You are about to grant admin access to {requestDetails.username}.
+                You are about to grant admin access to {requestDetails.user?.username}.
               </DialogDescription>
             </DialogHeader>
             
@@ -279,7 +255,7 @@ const AdminRequests = () => {
             <DialogHeader>
               <DialogTitle>Reject Admin Request</DialogTitle>
               <DialogDescription className="text-gray-400">
-                Are you sure you want to reject the admin access request from {requestDetails.username}?
+                Are you sure you want to reject the admin access request from {requestDetails.user?.username}?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

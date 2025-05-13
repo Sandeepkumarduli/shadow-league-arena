@@ -11,20 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-
-interface Tournament {
-  id: string;
-  name: string;
-  game: string;
-  start_date: string;
-  end_date: string | null;
-  max_teams: number;
-  status: string;
-  prize_pool: number;
-  entry_fee: number;
-  description: string | null;
-}
+import { fetchTournaments, subscribeTournamentChanges } from "@/services/tournamentService";
+import { Tournament } from "@/types/tournament";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Tournaments = () => {
   const navigate = useNavigate();
@@ -38,28 +27,15 @@ const Tournaments = () => {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select('*')
-          .order('start_date', { ascending: true });
-        
-        if (error) {
-          console.error('Error fetching tournaments:', error);
-          return;
-        }
-        
-        setTournaments(data || []);
-        setFilteredTournaments(data || []);
-      } catch (error) {
-        console.error('Error fetching tournaments:', error);
-      } finally {
-        setLoading(false);
-      }
+    const unsubscribe = subscribeTournamentChanges((fetchedTournaments) => {
+      setTournaments(fetchedTournaments);
+      setFilteredTournaments(fetchedTournaments);
+      setLoading(false);
+    });
+    
+    return () => {
+      unsubscribe();
     };
-
-    fetchTournaments();
   }, []);
 
   useEffect(() => {
@@ -205,7 +181,7 @@ const Tournaments = () => {
           {/* Tournaments List */}
           {loading ? (
             <div className="text-center py-20">
-              <p className="text-gray-400">Loading tournaments...</p>
+              <LoadingSpinner />
             </div>
           ) : filteredTournaments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -250,6 +226,7 @@ const Tournaments = () => {
                       <Button 
                         className="bg-esports-accent hover:bg-esports-accent/80 text-white rounded-full"
                         size="sm"
+                        onClick={() => navigate(`/tournaments/${tournament.id}`)}
                       >
                         <span className="mr-1">Details</span>
                         <ArrowRight className="h-4 w-4" />

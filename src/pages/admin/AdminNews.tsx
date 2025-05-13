@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Image, Edit, Trash, PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -17,68 +17,89 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-
-// Sample news items
-const newsData = [
-  {
-    id: "1",
-    title: "BGMI Pro League Season 5 Announced",
-    description: "Join the biggest mobile gaming tournament with a prize pool of 5,000 rdCoins. Registration opens next week!",
-    image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    link: "/tournaments",
-    createdAt: "2023-05-05",
-    active: true
-  },
-  {
-    id: "2",
-    title: "New Valorant Tournament Format",
-    description: "We're introducing a new bracket system for Valorant tournaments with double elimination rounds.",
-    image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    link: "/valorant-tournaments",
-    createdAt: "2023-05-02",
-    active: true
-  },
-  {
-    id: "3",
-    title: "Platform Maintenance Notice",
-    description: "The platform will be undergoing maintenance on May 20th from 2 AM to 5 AM. Some features may be unavailable during this time.",
-    image: "https://images.unsplash.com/photo-1563206767-5b18f218e8de?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    link: "/announcement",
-    createdAt: "2023-04-28",
-    active: false
-  }
-];
+import { 
+  NewsItem, 
+  fetchNews, 
+  subscribeNewsChanges,
+  createNewsItem,
+  updateNewsItem,
+  deleteNewsItem 
+} from "@/services/newsService";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminNews = () => {
   const navigate = useNavigate();
-  const [newsItems, setNewsItems] = useState(newsData);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form states
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [content, setDescription] = useState("");
+  const [category, setCategory] = useState("News");
   const [link, setLink] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const unsubscribe = subscribeNewsChanges((fetchedNews) => {
+      setNewsItems(fetchedNews);
+      setLoading(false);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+  
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
       
+      // Create a preview
+      const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target) {
           setImagePreview(event.target.result as string);
         }
       };
-      
       reader.readAsDataURL(file);
     }
   };
   
-  const handleAddNews = () => {
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      // Generate a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `news-images/${fileName}`;
+      
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('news-images')
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('news-images')
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+  
+  const handleAddNews = async () => {
     // Validate form
     if (!title.trim()) {
       toast({
@@ -89,47 +110,100 @@ const AdminNews = () => {
       return;
     }
     
-    if (!description.trim()) {
+    if (!content.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a description for the news item.",
+        description: "Please enter content for the news item.",
         variant: "destructive",
       });
       return;
     }
     
-    if (!imagePreview) {
+    setIsSubmitting(true);
+    
+    try {
+      // Upload image if selected
+      let imageUrl = null;
+      if (fileInputRef.current?.files?.[0]) {
+        imageUrl = await uploadImage(fileInputRef.current.files[0]);
+      }
+      
+      // Create news item
+      await createNewsItem({
+        title,
+        content,
+        category,
+        image_url: imageUrl
+      });
+      
+      toast({
+        title: "News Added",
+        description: "The news item has been successfully added.",
+      });
+      
+      // Reset form and close dialog
+      resetForm();
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding news:', error);
       toast({
         title: "Error",
-        description: "Please select an image for the news item.",
+        description: "Failed to add news item. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleEditNews = async () => {
+    if (!selectedNewsId) return;
+    
+    // Validate form
+    if (!title.trim() || !content.trim()) {
+      toast({
+        title: "Error",
+        description: "Title and content are required.",
         variant: "destructive",
       });
       return;
     }
     
-    // Create new news item
-    const newNewsItem = {
-      id: (newsItems.length + 1).toString(),
-      title,
-      description,
-      image: imagePreview,
-      link,
-      createdAt: new Date().toISOString().split('T')[0],
-      active: isActive
-    };
+    setIsSubmitting(true);
     
-    // Update state
-    setNewsItems([newNewsItem, ...newsItems]);
-    
-    // Show success message
-    toast({
-      title: "News Added",
-      description: "The news item has been successfully added.",
-    });
-    
-    // Reset form and close dialog
-    resetForm();
-    setIsAddDialogOpen(false);
+    try {
+      // Upload image if selected
+      let imageUrl = null;
+      if (fileInputRef.current?.files?.[0]) {
+        imageUrl = await uploadImage(fileInputRef.current.files[0]);
+      }
+      
+      // Update news item
+      await updateNewsItem(selectedNewsId, {
+        title,
+        content,
+        category,
+        image_url: imageUrl || undefined
+      });
+      
+      toast({
+        title: "News Updated",
+        description: "The news item has been successfully updated.",
+      });
+      
+      // Reset form and close dialog
+      resetForm();
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating news:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update news item. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const handleDeleteNews = (newsId: string) => {
@@ -137,29 +211,46 @@ const AdminNews = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const confirmDelete = () => {
+  const handleEditNewsOpen = (news: NewsItem) => {
+    setSelectedNewsId(news.id);
+    setTitle(news.title);
+    setDescription(news.content);
+    setCategory(news.category || "News");
+    setImagePreview(news.image_url);
+    setIsEditDialogOpen(true);
+  };
+  
+  const confirmDelete = async () => {
     if (!selectedNewsId) return;
     
-    // Filter out the deleted news item
-    setNewsItems(newsItems.filter(item => item.id !== selectedNewsId));
-    
-    // Show success message
-    toast({
-      title: "News Deleted",
-      description: "The news item has been successfully deleted.",
-    });
-    
-    // Reset state and close dialog
-    setSelectedNewsId(null);
-    setIsDeleteDialogOpen(false);
+    try {
+      await deleteNewsItem(selectedNewsId);
+      
+      toast({
+        title: "News Deleted",
+        description: "The news item has been successfully deleted.",
+      });
+      
+      setSelectedNewsId(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting news:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete news item. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const resetForm = () => {
     setTitle("");
     setDescription("");
+    setCategory("News");
     setLink("");
     setImagePreview(null);
     setIsActive(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -217,21 +308,21 @@ const AdminNews = () => {
                   id="description"
                   placeholder="Enter news description"
                   className="bg-esports-darker border-esports-accent/20 text-white resize-none h-24"
-                  value={description}
+                  value={content}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               
               <div>
-                <label htmlFor="link" className="block text-sm font-medium text-white mb-1">
-                  Link (Optional)
+                <label htmlFor="category" className="block text-sm font-medium text-white mb-1">
+                  Category
                 </label>
                 <Input
-                  id="link"
-                  placeholder="Enter link URL"
+                  id="category"
+                  placeholder="Enter category (e.g., News, Update, Tournament)"
                   className="bg-esports-darker border-esports-accent/20 text-white"
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
                 />
               </div>
               
@@ -245,6 +336,7 @@ const AdminNews = () => {
                   accept="image/*"
                   className="bg-esports-darker border-esports-accent/20 text-white"
                   onChange={handleImageChange}
+                  ref={fileInputRef}
                 />
                 
                 {imagePreview && (
@@ -256,19 +348,6 @@ const AdminNews = () => {
                     />
                   </div>
                 )}
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  id="active"
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded bg-esports-darker border-esports-accent"
-                />
-                <label htmlFor="active" className="text-sm font-medium text-white">
-                  Active (visible on homepage)
-                </label>
               </div>
             </div>
             
@@ -286,75 +365,176 @@ const AdminNews = () => {
               <Button
                 variant="default"
                 onClick={handleAddNews}
+                disabled={isSubmitting}
                 className="bg-esports-accent hover:bg-esports-accent/80"
               >
-                Add News
+                {isSubmitting ? "Adding..." : "Add News"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
       
+      {/* Edit News Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-esports-dark text-white border-esports-accent/20 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit News Item</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Update the selected news item.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div>
+              <label htmlFor="edit-title" className="block text-sm font-medium text-white mb-1">
+                Title
+              </label>
+              <Input
+                id="edit-title"
+                placeholder="Enter news title"
+                className="bg-esports-darker border-esports-accent/20 text-white"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="edit-description" className="block text-sm font-medium text-white mb-1">
+                Description
+              </label>
+              <Textarea
+                id="edit-description"
+                placeholder="Enter news description"
+                className="bg-esports-darker border-esports-accent/20 text-white resize-none h-24"
+                value={content}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="edit-category" className="block text-sm font-medium text-white mb-1">
+                Category
+              </label>
+              <Input
+                id="edit-category"
+                placeholder="Enter category (e.g., News, Update, Tournament)"
+                className="bg-esports-darker border-esports-accent/20 text-white"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="edit-image" className="block text-sm font-medium text-white mb-1">
+                Image
+              </label>
+              <Input
+                id="edit-image"
+                type="file"
+                accept="image/*"
+                className="bg-esports-darker border-esports-accent/20 text-white"
+                onChange={handleImageChange}
+                ref={fileInputRef}
+              />
+              
+              {imagePreview && (
+                <div className="mt-2">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="max-h-40 rounded-md object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                resetForm();
+                setIsEditDialogOpen(false);
+              }}
+              className="text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleEditNews}
+              disabled={isSubmitting}
+              className="bg-esports-accent hover:bg-esports-accent/80"
+            >
+              {isSubmitting ? "Updating..." : "Update News"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* News Items List */}
       <div className="space-y-4">
-        {newsItems.map((news) => (
-          <Card key={news.id} className="bg-esports-dark border-esports-accent/20">
-            <CardContent className="p-5">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="md:w-1/4">
-                  <div className="relative aspect-video w-full">
-                    <img
-                      src={news.image}
-                      alt={news.title}
-                      className="rounded-md object-cover w-full h-full"
-                    />
-                    {!news.active && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md">
-                        <span className="text-white text-sm font-medium px-2 py-1 bg-black/60 rounded">Inactive</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="md:w-3/4 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-white mb-2">{news.title}</h3>
-                    <p className="text-gray-300 text-sm mb-2">{news.description}</p>
-                    <div className="flex items-center text-xs text-gray-400">
-                      <span>Created: {news.createdAt}</span>
-                      {news.link && (
-                        <span className="ml-4">
-                          Link: <a href={news.link} className="text-esports-accent hover:underline" target="_blank" rel="noopener noreferrer">{news.link}</a>
-                        </span>
-                      )}
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : newsItems.length > 0 ? (
+          newsItems.map((news) => (
+            <Card key={news.id} className="bg-esports-dark border-esports-accent/20">
+              <CardContent className="p-5">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="md:w-1/4">
+                    <div className="relative aspect-video w-full">
+                      <img
+                        src={news.image_url || "https://placehold.co/800x400/1977d4/FFF?text=News"}
+                        alt={news.title}
+                        className="rounded-md object-cover w-full h-full"
+                      />
                     </div>
                   </div>
                   
-                  <div className="flex items-center mt-4 space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
+                  <div className="md:w-3/4 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">{news.title}</h3>
+                      <p className="text-gray-300 text-sm mb-2">{news.content}</p>
+                      <div className="flex items-center text-xs text-gray-400">
+                        <span>Created: {new Date(news.created_at).toLocaleString()}</span>
+                        <span className="ml-4">Category: {news.category || "News"}</span>
+                      </div>
+                    </div>
                     
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
-                      onClick={() => handleDeleteNews(news.id)}
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
+                    <div className="flex items-center mt-4 space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-esports-accent/20 text-white hover:bg-esports-accent/10"
+                        onClick={() => handleEditNewsOpen(news)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="bg-red-900/20 hover:bg-red-900/40 text-red-500"
+                        onClick={() => handleDeleteNews(news.id)}
+                      >
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="text-center py-8 bg-esports-dark rounded-lg border border-esports-accent/20">
+            <p className="text-gray-400">No news items found. Add your first news item using the button above.</p>
+          </div>
+        )}
       </div>
       
       {/* Delete Confirmation Dialog */}

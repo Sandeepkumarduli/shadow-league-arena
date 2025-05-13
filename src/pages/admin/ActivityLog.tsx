@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Activity, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,56 +14,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ActivityLog, fetchActivityLogs, subscribeActivityLogs } from "@/services/activityLogService";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
-// Sample activity log data
-const activityLogs = [
-  {
-    id: "1",
-    type: "tournament",
-    action: "create",
-    details: "Tournament 'BGMI Monthly Cup' was created",
-    user: "Admin",
-    timestamp: "2023-05-12T14:30:00Z",
-  },
-  {
-    id: "2",
-    type: "user",
-    action: "ban",
-    details: "User 'FireHawk22' was banned for inappropriate behavior",
-    user: "Admin",
-    timestamp: "2023-05-12T15:45:00Z",
-  },
-  {
-    id: "3",
-    type: "coins",
-    action: "distribute",
-    details: "500 rdCoins distributed to winners of 'BGMI Weekly Cup'",
-    user: "System",
-    timestamp: "2023-05-12T16:20:00Z",
-  },
-  {
-    id: "4",
-    type: "tournament",
-    action: "update",
-    details: "Tournament 'Free Fire Weekly' was updated",
-    user: "Admin",
-    timestamp: "2023-05-12T17:15:00Z",
-  },
-  {
-    id: "5",
-    type: "user",
-    action: "unban",
-    details: "User 'ThunderBolt' was unbanned",
-    user: "Admin",
-    timestamp: "2023-05-12T18:00:00Z",
-  }
-];
-
-const ActivityLog = () => {
+const ActivityLogPage = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [typeFilter, setTypeFilter] = React.useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const unsubscribe = subscribeActivityLogs((logs) => {
+      setActivityLogs(logs);
+      setLoading(false);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+  
   // Filter logs based on search query and type filter
   const filteredLogs = activityLogs.filter(log => {
     // Apply type filter
@@ -81,26 +52,6 @@ const ActivityLog = () => {
     return date.toLocaleString();
   };
 
-  // Function to get badge color based on action type
-  const getBadgeVariant = (action: string) => {
-    switch (action) {
-      case "create":
-        return "success";
-      case "update":
-        return "outline";
-      case "delete":
-        return "destructive";
-      case "ban":
-        return "destructive";
-      case "unban":
-        return "success";
-      case "distribute":
-        return "warning";
-      default:
-        return "secondary";
-    }
-  };
-
   // Function to get badge styles based on action type
   const getBadgeStyles = (action: string) => {
     switch (action) {
@@ -115,7 +66,14 @@ const ActivityLog = () => {
       case "unban":
         return "bg-green-500/20 text-green-400 border-none";
       case "distribute":
+      case "credit":
         return "bg-yellow-500/20 text-yellow-400 border-none";
+      case "debit":
+        return "bg-red-500/20 text-red-400 border-none";
+      case "admin_grant":
+        return "bg-purple-500/20 text-purple-400 border-none";
+      case "admin_reject":
+        return "bg-red-500/20 text-red-400 border-none";
       default:
         return "bg-gray-500/20 text-gray-400 border-none";
     }
@@ -123,19 +81,17 @@ const ActivityLog = () => {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="flex items-center text-gray-400 hover:text-white mr-4"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-white">Activity Log</h1>
-        </div>
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="flex items-center text-gray-400 hover:text-white mr-4"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-2xl font-bold text-white">Activity Log</h1>
       </div>
 
       {/* Filters */}
@@ -167,7 +123,11 @@ const ActivityLog = () => {
 
       {/* Activity Logs List */}
       <div className="space-y-4">
-        {filteredLogs.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : filteredLogs.length > 0 ? (
           filteredLogs.map((log) => (
             <Card key={log.id} className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-4">
@@ -186,9 +146,9 @@ const ActivityLog = () => {
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-400">
-                        <span>By {log.user}</span>
+                        <span>By {log.user_id ? 'Admin' : 'System'}</span>
                         <span className="mx-2">•</span>
-                        <span>{formatTimestamp(log.timestamp)}</span>
+                        <span>{formatTimestamp(log.created_at)}</span>
                       </div>
                     </div>
                   </div>
@@ -206,4 +166,4 @@ const ActivityLog = () => {
   );
 };
 
-export default ActivityLog;
+export default ActivityLogPage;

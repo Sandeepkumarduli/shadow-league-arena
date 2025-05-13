@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: string
+          id: string
+          metadata: Json | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details: string
+          id?: string
+          metadata?: Json | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string
+          id?: string
+          metadata?: Json | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       admin_requests: {
         Row: {
           created_at: string | null
@@ -56,6 +86,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_wallet: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      broadcast_messages: {
+        Row: {
+          id: string
+          message: string
+          message_type: string
+          recipient_identifier: string | null
+          recipient_type: string
+          sent_at: string
+          sent_by: string | null
+        }
+        Insert: {
+          id?: string
+          message: string
+          message_type: string
+          recipient_identifier?: string | null
+          recipient_type: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Update: {
+          id?: string
+          message?: string
+          message_type?: string
+          recipient_identifier?: string | null
+          recipient_type?: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Relationships: []
       }
       news: {
         Row: {

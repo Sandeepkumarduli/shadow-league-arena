@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Info, AlertCircle, BellRing, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -24,39 +24,49 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { 
+  BroadcastMessage, 
+  fetchBroadcastMessages,
+  subscribeBroadcastChanges,
+  sendBroadcastMessage
+} from "@/services/broadcastService";
+import { fetchCurrentUser } from "@/services/authService";
+import { fetchUsers } from "@/services/userService";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const AdminBroadcast = () => {
   const navigate = useNavigate();
-  const [recipientType, setRecipientType] = useState("all");
+  const [recipientType, setRecipientType] = useState<"all" | "game" | "specific">("all");
   const [userIdentifier, setUserIdentifier] = useState("");
-  const [messageType, setMessageType] = useState("info");
+  const [messageType, setMessageType] = useState<"info" | "warning" | "urgent">("info");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [recentMessages, setRecentMessages] = useState([
-    {
-      id: "1",
-      recipient: "All Users",
-      type: "info",
-      message: "Welcome to the new platform update! Check out the new features.",
-      sentAt: "2023-05-10 14:30:22"
-    },
-    {
-      id: "2",
-      recipient: "BGMI Players",
-      type: "warning",
-      message: "BGMI servers will be down for maintenance on May 15th from 2 AM to 5 AM.",
-      sentAt: "2023-05-09 10:15:45"
-    },
-    {
-      id: "3",
-      recipient: "FireHawk22",
-      type: "urgent",
-      message: "Your tournament registration for 'BGMI Pro League' needs attention.",
-      sentAt: "2023-05-08 18:22:10"
-    }
-  ]);
+  const [recentMessages, setRecentMessages] = useState<BroadcastMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<{ id: string; username: string; email: string }[]>([]);
+  
+  useEffect(() => {
+    // Subscribe to broadcast messages
+    const unsubscribe = subscribeBroadcastChanges((messages) => {
+      setRecentMessages(messages);
+      setLoading(false);
+    });
+    
+    // Fetch users for recipient selection
+    fetchUsers().then(fetchedUsers => {
+      setUsers(fetchedUsers.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email
+      })));
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) {
       toast({
         title: "Error",
@@ -77,27 +87,17 @@ const AdminBroadcast = () => {
     
     setIsSending(true);
     
-    // In a real application, this would be an API call to send the message
-    setTimeout(() => {
-      const recipientDisplay = recipientType === "all" 
-        ? "All Users" 
-        : recipientType === "specific" 
-          ? userIdentifier
-          : "BGMI Players";
+    try {
+      // Get current user (admin)
+      const currentUser = await fetchCurrentUser();
+      if (!currentUser) throw new Error("Not authorized");
       
-      const newMessage = {
-        id: (recentMessages.length + 1).toString(),
-        recipient: recipientDisplay,
-        type: messageType,
+      await sendBroadcastMessage({
+        recipient_type: recipientType,
+        recipient_identifier: recipientType === "specific" ? userIdentifier : undefined,
+        message_type: messageType,
         message,
-        sentAt: new Date().toLocaleString()
-      };
-      
-      setRecentMessages([newMessage, ...recentMessages]);
-      
-      toast({
-        title: "Message Sent",
-        description: `Your message has been sent to ${recipientDisplay}.`,
+        sent_by: currentUser.id
       });
       
       // Reset form
@@ -105,9 +105,16 @@ const AdminBroadcast = () => {
       if (recipientType === "specific") {
         setUserIdentifier("");
       }
-      
+    } catch (error) {
+      console.error("Error sending broadcast message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send broadcast message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSending(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -137,7 +144,7 @@ const AdminBroadcast = () => {
               <Label htmlFor="recipient" className="text-white">Recipient</Label>
               <Select
                 value={recipientType}
-                onValueChange={setRecipientType}
+                onValueChange={(value) => setRecipientType(value as "all" | "game" | "specific")}
               >
                 <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white mt-1">
                   <SelectValue placeholder="Select recipient" />
@@ -153,13 +160,21 @@ const AdminBroadcast = () => {
             {recipientType === "specific" && (
               <div>
                 <Label htmlFor="userIdentifier" className="text-white">Username or Email</Label>
-                <Input
-                  id="userIdentifier"
-                  placeholder="Enter username or email address"
-                  className="bg-esports-darker border-esports-accent/20 text-white mt-1"
-                  value={userIdentifier}
-                  onChange={(e) => setUserIdentifier(e.target.value)}
-                />
+                <Select 
+                  value={userIdentifier} 
+                  onValueChange={setUserIdentifier}
+                >
+                  <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white mt-1">
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-esports-dark border-esports-accent/20 text-white">
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.username}>
+                        {user.username} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
             
@@ -167,7 +182,7 @@ const AdminBroadcast = () => {
               <Label htmlFor="messageType" className="text-white">Message Type</Label>
               <Select
                 value={messageType}
-                onValueChange={setMessageType}
+                onValueChange={(value) => setMessageType(value as "info" | "warning" | "urgent")}
               >
                 <SelectTrigger className="bg-esports-darker border-esports-accent/20 text-white mt-1">
                   <SelectValue placeholder="Select message type" />
@@ -210,42 +225,64 @@ const AdminBroadcast = () => {
             <CardDescription className="text-gray-400">History of messages sent</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentMessages.map(msg => (
-                <div 
-                  key={msg.id} 
-                  className="p-3 bg-esports-darker rounded-md border-l-4 border-l-esports-accent"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center">
-                      {msg.type === "info" && <Info className="h-4 w-4 text-blue-400 mr-2" />}
-                      {msg.type === "warning" && <AlertCircle className="h-4 w-4 text-amber-400 mr-2" />}
-                      {msg.type === "urgent" && <BellRing className="h-4 w-4 text-red-500 mr-2" />}
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          msg.type === "info" 
-                            ? "bg-blue-900/20 text-blue-400 border-none" 
-                            : msg.type === "warning" 
-                              ? "bg-amber-900/20 text-amber-400 border-none"
-                              : "bg-red-900/20 text-red-500 border-none"
-                        }
-                      >
-                        {msg.type.charAt(0).toUpperCase() + msg.type.slice(1)}
-                      </Badge>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner />
+              </div>
+            ) : recentMessages.length > 0 ? (
+              <div className="space-y-4">
+                {recentMessages.map(msg => {
+                  // Format recipient display
+                  let recipientDisplay = "All Users";
+                  if (msg.recipient_type === "specific") {
+                    recipientDisplay = msg.recipient_identifier || "Specific User";
+                  } else if (msg.recipient_type === "game") {
+                    recipientDisplay = "BGMI Players";
+                  }
+                  
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className="p-3 bg-esports-darker rounded-md border-l-4 border-l-esports-accent"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center">
+                          {msg.message_type === "info" && <Info className="h-4 w-4 text-blue-400 mr-2" />}
+                          {msg.message_type === "warning" && <AlertCircle className="h-4 w-4 text-amber-400 mr-2" />}
+                          {msg.message_type === "urgent" && <BellRing className="h-4 w-4 text-red-500 mr-2" />}
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              msg.message_type === "info" 
+                                ? "bg-blue-900/20 text-blue-400 border-none" 
+                                : msg.message_type === "warning" 
+                                  ? "bg-amber-900/20 text-amber-400 border-none"
+                                  : "bg-red-900/20 text-red-500 border-none"
+                            }
+                          >
+                            {msg.message_type.charAt(0).toUpperCase() + msg.message_type.slice(1)}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {new Date(msg.sent_at).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <p className="text-white text-sm mb-2">{msg.message}</p>
+                      
+                      <div className="flex items-center text-xs text-gray-400">
+                        <Users className="h-3 w-3 mr-1" />
+                        <span>To: {recipientDisplay}</span>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-400">{msg.sentAt}</span>
-                  </div>
-                  
-                  <p className="text-white text-sm mb-2">{msg.message}</p>
-                  
-                  <div className="flex items-center text-xs text-gray-400">
-                    <Users className="h-3 w-3 mr-1" />
-                    <span>To: {msg.recipient}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No messages have been sent yet.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
