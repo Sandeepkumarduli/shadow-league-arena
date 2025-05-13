@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Filter, Calendar } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,9 +10,9 @@ import { format } from "date-fns";
 
 interface TournamentFiltersProps {
   statusFilter: string;
-  setStatusFilter: (value: string) => void;
+  onStatusChange: (value: string) => void;
   gameFilter: string;
-  setGameFilter: (value: string) => void;
+  onGameChange: (value: string) => void;
   gameTypeFilter?: string;
   setGameTypeFilter?: (value: string) => void;
   dateFilter?: Date | null;
@@ -20,6 +21,8 @@ interface TournamentFiltersProps {
   searchQuery?: string;
   onSearchChange?: (value: React.ChangeEvent<HTMLInputElement>) => void;
   gameTypes?: string[];
+  setStatusFilter?: (value: string) => void;
+  setGameFilter?: (value: string) => void;
 }
 
 // Game type options
@@ -32,8 +35,10 @@ const gameTypeOptions = [
 
 const TournamentFilters = ({ 
   statusFilter, 
+  onStatusChange,
   setStatusFilter, 
   gameFilter, 
+  onGameChange,
   setGameFilter,
   gameTypeFilter = "all",
   setGameTypeFilter,
@@ -45,6 +50,10 @@ const TournamentFilters = ({
   gameTypes
 }: TournamentFiltersProps) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+
+  // Use the appropriate set function based on what's provided
+  const handleStatusChange = setStatusFilter || onStatusChange;
+  const handleGameChange = setGameFilter || onGameChange;
 
   return (
     <Collapsible
@@ -58,7 +67,7 @@ const TournamentFilters = ({
           <span className="text-white font-medium">Filters:</span>
         </div>
         
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-[180px] bg-esports-dark border-esports-accent/30 text-gray-300">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -70,7 +79,7 @@ const TournamentFilters = ({
           </SelectContent>
         </Select>
         
-        <Select value={gameFilter} onValueChange={setGameFilter}>
+        <Select value={gameFilter} onValueChange={handleGameChange}>
           <SelectTrigger className="w-[220px] bg-esports-dark border-esports-accent/30 text-gray-300">
             <SelectValue placeholder="Game" />
           </SelectTrigger>
@@ -147,7 +156,7 @@ const TournamentFilters = ({
       <CollapsibleContent className="lg:hidden space-y-4 mb-6 bg-esports-dark/60 p-4 rounded-lg border border-esports-accent/20">
         <div>
           <label className="text-sm text-gray-300 mb-1 block">Status</label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full bg-esports-dark border-esports-accent/30 text-gray-300">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -162,7 +171,7 @@ const TournamentFilters = ({
         
         <div>
           <label className="text-sm text-gray-300 mb-1 block">Game</label>
-          <Select value={gameFilter} onValueChange={setGameFilter}>
+          <Select value={gameFilter} onValueChange={handleGameChange}>
             <SelectTrigger className="w-full bg-esports-dark border-esports-accent/30 text-gray-300">
               <SelectValue placeholder="Game" />
             </SelectTrigger>

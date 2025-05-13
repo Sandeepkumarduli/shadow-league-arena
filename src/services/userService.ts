@@ -57,7 +57,7 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
     return users ? users.map(user => ({
       ...user,
       balance: balanceMap[user.id] || 0
-    })) : [];
+    } as User)) : [];
   } catch (error) {
     console.error('Error fetching users:', error);
     toast({
@@ -109,13 +109,13 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       return {
         ...data,
         balance: 0
-      };
+      } as User;
     }
     
     return {
       ...data,
       balance: wallet?.balance || 0
-    };
+    } as User;
   } catch (error) {
     console.error('Error updating user:', error);
     toast({
