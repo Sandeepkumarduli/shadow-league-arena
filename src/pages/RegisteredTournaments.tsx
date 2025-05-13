@@ -1,11 +1,15 @@
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Trophy, Clock } from "lucide-react";
+import { Calendar, Users, Trophy, Clock, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface Team {
   id: string;
@@ -28,89 +32,73 @@ interface Tournament {
 
 const RegisteredTournaments = () => {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [userTeams, setUserTeams] = useState<Team[]>([]);
 
-  useEffect(() => {
-    const fetchTournaments = async () => {
-      if (!user) return;
+  // Use React Query for efficient data fetching
+  const { data: userTeams = [], isLoading: isTeamsLoading } = useQuery({
+    queryKey: ['teams', user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("User not authenticated");
       
-      setIsLoading(true);
-      try {
-        // First, get all user's teams
-        const { data: teamsData, error: teamsError } = await supabase
-          .from('teams')
-          .select('id, name')
-          .eq('owner_id', user.id);
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('owner_id', user.id);
         
-        if (teamsError) throw teamsError;
-        
-        setUserTeams(teamsData || []);
-        
-        if (!teamsData || teamsData.length === 0) {
-          setTournaments([]);
-          return;
-        }
-        
-        // Get all registrations for user's teams
-        const teamIds = teamsData.map(team => team.id);
-        
-        let registrations = [];
-        
-        for (const teamId of teamIds) {
-          const { data, error } = await supabase
-            .from('tournament_registrations')
-            .select(`
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+  
+  const { data: tournaments = [], isLoading: isTournamentsLoading } = useQuery({
+    queryKey: ['registered-tournaments', userTeams],
+    queryFn: async () => {
+      if (!user || userTeams.length === 0) return [];
+      
+      const teamIds = userTeams.map((team: Team) => team.id);
+      const registrations = [];
+      
+      for (const teamId of teamIds) {
+        const { data, error } = await supabase
+          .from('tournament_registrations')
+          .select(`
+            id,
+            status,
+            team_id,
+            tournament:tournaments(
               id,
+              name,
+              game,
+              start_date,
+              max_teams,
               status,
-              team_id,
-              tournament:tournaments(
-                id,
-                name,
-                game,
-                start_date,
-                max_teams,
-                status,
-                room_id,
-                room_password
-              )
-            `)
-            .eq('team_id', teamId);
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            registrations.push(...data);
-          }
+              room_id,
+              room_password
+            )
+          `)
+          .eq('team_id', teamId);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          registrations.push(...data);
         }
-        
-        // Format the tournaments data
-        const formattedTournaments = registrations.map(reg => {
-          const team = teamsData.find(t => t.id === reg.team_id);
-          return {
-            ...reg.tournament,
-            team: team?.name || "Unknown Team",
-            team_id: reg.team_id,
-            registration_status: reg.status
-          };
-        });
-        
-        setTournaments(formattedTournaments);
-      } catch (error) {
-        console.error("Error fetching registered tournaments:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load registered tournaments. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    fetchTournaments();
-  }, [user]);
+      
+      const formattedTournaments = registrations.map((reg) => {
+        const team = userTeams.find((t: Team) => t.id === reg.team_id);
+        return {
+          ...reg.tournament,
+          team: team?.name || "Unknown Team",
+          team_id: reg.team_id,
+          registration_status: reg.status
+        };
+      });
+      
+      return formattedTournaments;
+    },
+    enabled: userTeams.length > 0,
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -150,6 +138,8 @@ const RegisteredTournaments = () => {
     });
   };
 
+  const isLoading = isTeamsLoading || isTournamentsLoading;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -159,8 +149,21 @@ const RegisteredTournaments = () => {
         </div>
         
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-esports-accent"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-esports-dark border border-esports-accent/20 rounded-lg overflow-hidden">
+                <div className="p-4">
+                  <Skeleton className="h-6 w-24 mb-2" />
+                  <Skeleton className="h-7 w-full mb-1" />
+                  <Skeleton className="h-5 w-32" />
+                </div>
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : tournaments.length === 0 ? (
           <div className="text-center p-8 bg-esports-dark rounded-lg border border-esports-accent/20">
@@ -237,8 +240,5 @@ const RegisteredTournaments = () => {
     </DashboardLayout>
   );
 };
-
-// Add missing Link import
-import { Link } from "react-router-dom";
 
 export default RegisteredTournaments;

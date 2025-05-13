@@ -37,17 +37,22 @@ import UpdateWinners from "./pages/admin/UpdateWinners";
 import ActivityLog from "./pages/admin/ActivityLog";
 import BigTournaments from "./pages/admin/BigTournaments";
 
+// Optimize the QueryClient configuration for better performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      staleTime: 60000, // 1 minute
+      cacheTime: 300000, // 5 minutes
       retry: 1,
-      staleTime: 30000, // 30 seconds
-      refetchOnWindowFocus: false, // Improves performance
+      retryDelay: 1000
     },
   }
 });
 
-// RouteChangeListener component to handle route transitions
+// RouteChangeListener component to handle route transitions with improved performance
 const RouteChangeListener = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
@@ -55,10 +60,10 @@ const RouteChangeListener = () => {
   useEffect(() => {
     setIsLoading(true);
     
-    // Shorter loading delay to improve perceived performance
+    // Faster loading transition for better perceived performance
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 300);
+    }, 200);
     
     return () => clearTimeout(timer);
   }, [location]);
@@ -70,7 +75,7 @@ const RouteChangeListener = () => {
   return null;
 };
 
-// Protected route component
+// Protected route component with optimized loading
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
@@ -86,7 +91,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Admin route component that only allows admin users
+// Admin route component that only allows admin users with optimized loading
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const location = useLocation();

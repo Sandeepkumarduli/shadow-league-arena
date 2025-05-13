@@ -1,13 +1,15 @@
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Users, Calendar, Clock, ArrowUpRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/TopBar";
 import { supabase } from "@/integrations/supabase/client";
+import { LoadingState } from "@/components/LoadingState";
+import { formatDateTime, getTimeRemaining } from "@/lib/helpers";
 
 interface Tournament {
   id: string;
@@ -26,63 +28,95 @@ interface TeamData {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [upcomingTournaments, setUpcomingTournaments] = useState<Tournament[]>([]);
-  const [userTeams, setUserTeams] = useState<TeamData[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
+  // Fetch user's teams with React Query
+  const { 
+    data: userTeams = [], 
+    isLoading: isTeamsLoading 
+  } = useQuery({
+    queryKey: ['teams', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
       
-      try {
-        // Fetch upcoming tournaments
-        const { data: tournaments, error: tournamentError } = await supabase
-          .from('tournaments')
-          .select('*')
-          .eq('status', 'upcoming')
-          .order('start_date', { ascending: true })
-          .limit(5);
-        
-        if (tournamentError) {
-          console.error("Error fetching tournaments:", tournamentError);
-        } else {
-          setUpcomingTournaments(tournaments || []);
-        }
-        
-        // Fetch user's teams
-        const { data: teams, error: teamsError } = await supabase
-          .from('teams')
-          .select('id, name')
-          .eq('owner_id', user.id);
-        
-        if (teamsError) {
-          console.error("Error fetching teams:", teamsError);
-        } else {
-          setUserTeams(teams || []);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('owner_id', user.id);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+    staleTime: 60000, // 1 minute
+  });
+
+  // Fetch upcoming tournaments with React Query
+  const { 
+    data: upcomingTournaments = [], 
+    isLoading: isTournamentsLoading 
+  } = useQuery({
+    queryKey: ['upcoming-tournaments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('status', 'upcoming')
+        .order('start_date', { ascending: true })
+        .limit(5);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60000, // 1 minute
+  });
+  
+  // Fetch tournament registrations count for the user
+  const { 
+    data: tournamentStats = { played: 0, upcoming: 0, won: 0 }, 
+    isLoading: isStatsLoading 
+  } = useQuery({
+    queryKey: ['tournament-stats', user?.id, userTeams],
+    queryFn: async () => {
+      if (!user || userTeams.length === 0) {
+        return { played: 0, upcoming: 0, won: 0 };
       }
-    };
-    
-    fetchDashboardData();
-  }, [user]);
+      
+      const teamIds = userTeams.map((team: TeamData) => team.id);
+      
+      // Get registrations
+      const { data: registrations, error: regError } = await supabase
+        .from('tournament_registrations')
+        .select(`
+          tournament:tournaments(
+            id,
+            status
+          )
+        `)
+        .in('team_id', teamIds);
+        
+      if (regError) throw regError;
+      
+      // Get tournament results for won tournaments
+      const { data: results, error: resultsError } = await supabase
+        .from('tournament_results')
+        .select('*')
+        .in('team_id', teamIds)
+        .eq('position', 1); // First place
+        
+      if (resultsError) throw resultsError;
+      
+      // Process the data
+      const played = registrations?.filter(reg => reg.tournament.status === 'completed').length || 0;
+      const upcoming = registrations?.filter(reg => reg.tournament.status === 'upcoming').length || 0;
+      const won = results?.length || 0;
+      
+      return { played, upcoming, won };
+    },
+    enabled: !!user && userTeams.length > 0,
+    staleTime: 60000, // 1 minute
+  });
 
-  // Empty activity data - would be populated from real data in a production app
-  const activityData = [];
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const isLoading = isTeamsLoading || isTournamentsLoading || isStatsLoading;
 
   return (
     <div className="flex h-screen bg-esports-darker overflow-hidden">
@@ -104,49 +138,73 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
             <Card className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">My Teams</p>
-                  <h3 className="text-2xl font-bold text-white">{userTeams.length}</h3>
-                </div>
-                <div className="h-10 w-10 bg-esports-accent/20 rounded-full flex items-center justify-center">
-                  <Users className="h-5 w-5 text-esports-accent" />
-                </div>
+                {isLoading ? (
+                  <LoadingState variant="line" height="h-12" />
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-400">My Teams</p>
+                      <h3 className="text-2xl font-bold text-white">{userTeams.length}</h3>
+                    </div>
+                    <div className="h-10 w-10 bg-esports-accent/20 rounded-full flex items-center justify-center">
+                      <Users className="h-5 w-5 text-esports-accent" />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
             
             <Card className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Tournaments Played</p>
-                  <h3 className="text-2xl font-bold text-white">0</h3>
-                </div>
-                <div className="h-10 w-10 bg-green-500/20 rounded-full flex items-center justify-center">
-                  <Trophy className="h-5 w-5 text-green-500" />
-                </div>
+                {isLoading ? (
+                  <LoadingState variant="line" height="h-12" />
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-400">Tournaments Played</p>
+                      <h3 className="text-2xl font-bold text-white">{tournamentStats.played}</h3>
+                    </div>
+                    <div className="h-10 w-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                      <Trophy className="h-5 w-5 text-green-500" />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
             
             <Card className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Upcoming Tournaments</p>
-                  <h3 className="text-2xl font-bold text-white">{upcomingTournaments.length}</h3>
-                </div>
-                <div className="h-10 w-10 bg-amber-500/20 rounded-full flex items-center justify-center">
-                  <Calendar className="h-5 w-5 text-amber-500" />
-                </div>
+                {isLoading ? (
+                  <LoadingState variant="line" height="h-12" />
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-400">Upcoming Tournaments</p>
+                      <h3 className="text-2xl font-bold text-white">{tournamentStats.upcoming}</h3>
+                    </div>
+                    <div className="h-10 w-10 bg-amber-500/20 rounded-full flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-amber-500" />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
             
             <Card className="bg-esports-dark border-esports-accent/20">
               <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Tournaments Won</p>
-                  <h3 className="text-2xl font-bold text-white">0</h3>
-                </div>
-                <div className="h-10 w-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-                  <Trophy className="h-5 w-5 text-purple-500" />
-                </div>
+                {isLoading ? (
+                  <LoadingState variant="line" height="h-12" />
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-sm text-gray-400">Tournaments Won</p>
+                      <h3 className="text-2xl font-bold text-white">{tournamentStats.won}</h3>
+                    </div>
+                    <div className="h-10 w-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                      <Trophy className="h-5 w-5 text-purple-500" />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -161,8 +219,8 @@ const Dashboard = () => {
                   <CardTitle className="text-white text-lg">Upcoming Tournaments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
-                    <div className="text-center py-6 text-gray-500">Loading tournaments...</div>
+                  {isTournamentsLoading ? (
+                    <LoadingState variant="line" count={3} height="h-16" width="w-full" />
                   ) : upcomingTournaments.length > 0 ? (
                     <div className="space-y-2">
                       {upcomingTournaments.map((tournament) => (
@@ -183,7 +241,7 @@ const Dashboard = () => {
                           <div className="flex flex-col items-end">
                             <div className="flex items-center">
                               <Clock className="h-3 w-3 text-esports-accent mr-1" />
-                              <span className="text-xs text-gray-400">{formatDate(tournament.start_date)}</span>
+                              <span className="text-xs text-gray-400">{formatDateTime(tournament.start_date)}</span>
                             </div>
                             <div className="text-xs bg-yellow-700/20 text-yellow-400 px-2 py-0.5 rounded mt-1">
                               {tournament.max_teams} Teams Max
@@ -204,27 +262,10 @@ const Dashboard = () => {
                   <CardTitle className="text-white text-lg">Activity Overview</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  {activityData.length > 0 ? (
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={activityData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                          <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#9ca3af' }} />
-                          <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9ca3af' }} />
-                          <Tooltip contentStyle={{ backgroundColor: '#1a1c23', border: 'none' }} />
-                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                            {activityData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill="#1977d4" />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-10 text-gray-500">
-                      <p>No activity data to display yet</p>
-                      <p className="text-sm mt-2">Join tournaments to see your activity</p>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                    <p>No activity data to display yet</p>
+                    <p className="text-sm mt-2">Join tournaments to see your activity</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -237,11 +278,11 @@ const Dashboard = () => {
                   <CardTitle className="text-white text-lg">My Teams</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {loading ? (
-                    <div className="text-center py-6 text-gray-500">Loading teams...</div>
+                  {isTeamsLoading ? (
+                    <LoadingState variant="line" count={2} height="h-14" width="w-full" />
                   ) : userTeams.length > 0 ? (
                     <div className="space-y-2">
-                      {userTeams.map((team) => (
+                      {userTeams.map((team: TeamData) => (
                         <div
                           key={team.id}
                           className="flex items-center justify-between bg-esports-darker rounded-md p-3 hover:bg-esports-accent/10 cursor-pointer transition-colors"
