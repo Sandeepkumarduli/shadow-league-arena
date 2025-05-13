@@ -53,7 +53,7 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
       });
     }
     
-    // Combine user data with balance - explicitly cast to User type to avoid deep instantiation
+    // Combine user data with balance - explicitly construct User objects to avoid deep instantiation
     const result: User[] = [];
     
     if (users) {
@@ -121,7 +121,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       
     if (walletError) {
       console.error('Error fetching user wallet:', walletError);
-      // Continue without the balance data
+      // Continue without the balance data, explicitly constructing a User object
       return {
         id: data.id,
         username: data.username,
@@ -135,6 +135,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       };
     }
     
+    // Return a fully constructed User object to avoid type inference issues
     return {
       id: data.id,
       username: data.username,
