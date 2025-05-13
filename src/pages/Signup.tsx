@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
@@ -98,10 +97,10 @@ const Signup = () => {
     try {
       console.log("Attempting signup with:", trimmedData.username, trimmedData.email, trimmedData.phone);
       const success = await signup(
-        trimmedData.username, 
         trimmedData.email, 
-        trimmedData.phone, 
-        trimmedData.password
+        trimmedData.password, 
+        trimmedData.username, 
+        trimmedData.phone
       );
       
       if (success) {
@@ -113,6 +112,11 @@ const Signup = () => {
         navigate("/dashboard");
       } else {
         console.log("Signup returned false");
+        toast({
+          title: "Signup failed",
+          description: "Could not create account. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -156,6 +160,7 @@ const Signup = () => {
                 onChange={handleChange}
                 className="bg-esports-darker border-esports-accent/30"
                 required
+                autoComplete="off"
               />
             </div>
             
@@ -170,6 +175,7 @@ const Signup = () => {
                 onChange={handleChange}
                 className="bg-esports-darker border-esports-accent/30"
                 required
+                autoComplete="off"
               />
             </div>
             
@@ -184,6 +190,7 @@ const Signup = () => {
                 onChange={handleChange}
                 className="bg-esports-darker border-esports-accent/30"
                 required
+                autoComplete="off"
               />
               <p className="text-xs text-gray-400">Enter a phone number with at least 10 digits</p>
             </div>
@@ -199,6 +206,7 @@ const Signup = () => {
                 onChange={handleChange}
                 className="bg-esports-darker border-esports-accent/30"
                 required
+                autoComplete="off"
               />
               <p className="text-xs text-gray-400">
                 Password must be at least 8 characters long, contain 1 number and 1 uppercase letter
@@ -216,6 +224,7 @@ const Signup = () => {
                 onChange={handleChange}
                 className="bg-esports-darker border-esports-accent/30"
                 required
+                autoComplete="off"
               />
             </div>
           </CardContent>

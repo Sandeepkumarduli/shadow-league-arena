@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
@@ -11,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
-  const { login, isAuthenticated, isLoading: authLoading, setIsAdmin, isAdmin } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, isAdmin, setIsAdmin } = useAuth();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +43,7 @@ const Login = () => {
       // Check for hardcoded admin credentials
       if (emailOrUsername.trim() === "Sandeepkumar" && password.trim() === "12345678") {
         console.log("Admin login successful");
-        await setIsAdmin(true); // Ensure this completes before navigation
+        setIsAdmin(true); // Use the setIsAdmin method
         toast({
           title: "Admin login successful",
           description: "Welcome to the admin panel!",
@@ -68,6 +67,11 @@ const Login = () => {
         navigate("/dashboard");
       } else {
         console.log("Login unsuccessful");
+        toast({
+          title: "Login failed",
+          description: "Invalid credentials",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -117,6 +121,7 @@ const Login = () => {
                     onChange={(e) => setEmailOrUsername(e.target.value)} 
                     className="bg-esports-darker border-[#1977d4]/30 h-11"
                     required
+                    autoComplete="off"
                   />
                 </div>
                 
@@ -138,6 +143,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)} 
                     className="bg-esports-darker border-[#1977d4]/30 h-11"
                     required
+                    autoComplete="off"
                   />
                 </div>
               </CardContent>

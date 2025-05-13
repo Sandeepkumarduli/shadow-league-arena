@@ -19,11 +19,12 @@ interface AuthContextProps {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
   adminLogin: (username: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, username: string, phone: string, bgmiid?: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, phone: string, bgmiid?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
+  setIsAdmin: (value: boolean) => void; // Add this missing method
 }
 
 const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
@@ -125,7 +126,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -140,7 +141,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Login Successful",
           description: "Welcome back!",
         });
+        return true;
       }
+      return false;
     } catch (error: any) {
       console.error("Login error:", error.message);
       toast({
@@ -155,7 +158,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
   
   // Function for admin login with hardcoded credentials
-  const adminLogin = async (username: string, password: string) => {
+  const adminLogin = async (username: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
       // Hardcoded admin credentials
@@ -199,7 +202,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signup = async (email: string, password: string, username: string, phone: string, bgmiid?: string) => {
+  const signup = async (email: string, password: string, username: string, phone: string, bgmiid?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       // Create new user with Supabase auth
@@ -220,11 +223,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw error;
       }
 
+      if (!data.user) {
+        return false;
+      }
+
       // Ensure user profile is created in the database
       const { error: userError } = await supabase
         .from('users')
         .insert([{
-          id: data.user?.id,
+          id: data.user.id,
           username,
           email,
           phone,
@@ -240,7 +247,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { error: walletError } = await supabase
         .from('wallets')
         .insert([{
-          user_id: data.user?.id,
+          user_id: data.user.id,
           balance: 0
         }]);
 
@@ -252,6 +259,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         title: "Account Created",
         description: "You have been successfully registered!",
       });
+      
+      return true;
     } catch (error: any) {
       console.error("Signup error:", error.message);
       toast({
@@ -360,6 +369,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signup,
     logout,
     updateProfile,
+    setIsAdmin, // Add the missing setIsAdmin method to the context value
   };
 
   return (

@@ -2,11 +2,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+// Define valid table names to avoid type errors
+type TableName = 'admin_requests' | 'users' | 'news' | 'notifications' | 
+  'team_members' | 'teams' | 'tournament_registrations' | 'tournaments' | 
+  'tournament_results' | 'transactions' | 'wallets';
+
 /**
  * Utility function to handle data fetching with improved error handling
  */
 export async function fetchData<T = any>(
-  tableName: string,
+  tableName: TableName,
   options: {
     columns?: string;
     filters?: Record<string, any>;
@@ -76,7 +81,7 @@ export async function fetchData<T = any>(
  */
 export async function mutateData<T = any>(
   action: "insert" | "update" | "delete",
-  tableName: string,
+  tableName: TableName,
   options: {
     data?: any;
     filters?: Record<string, any>;
