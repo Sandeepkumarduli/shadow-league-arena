@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search } from "lucide-react";
@@ -7,7 +6,7 @@ import AdminLayout from "@/components/AdminLayout";
 import { toast } from "@/hooks/use-toast";
 import { InputWithIcon } from "@/components/ui/input-with-icon";
 import RefreshButton from "@/components/RefreshButton";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TournamentWinnerCard from '@/components/admin/TournamentWinnerCard';
 import UpdateWinnersDialog from '@/components/admin/UpdateWinnersDialog';
@@ -33,6 +32,7 @@ const UpdateWinners = () => {
     setLoading(true);
     try {
       const data = await fetchCompletedTournaments();
+      console.log("Fetched completed tournaments:", data);
       setTournaments(data);
     } catch (error) {
       console.error("Error fetching tournaments:", error);
@@ -50,6 +50,7 @@ const UpdateWinners = () => {
   const fetchTeams = async () => {
     try {
       const data = await fetchAllTeams();
+      console.log("Fetched teams:", data);
       setTeams(data);
     } catch (error) {
       console.error("Error fetching teams:", error);
@@ -60,37 +61,17 @@ const UpdateWinners = () => {
     fetchTournaments();
     fetchTeams();
     
-    // Set up real-time subscription for tournaments
-    const tournamentsChannel = supabase
-      .channel('public:tournaments')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tournaments'
-        },
-        () => {
-          fetchTournaments();
-        }
-      )
-      .subscribe();
+    // Set up real-time subscription for tournaments with improved handling
+    const tournamentsChannel = createRealtimeChannel('tournaments', () => {
+      console.log("Tournaments table updated, refreshing data");
+      fetchTournaments();
+    });
       
     // Set up real-time subscription for tournament results
-    const resultsChannel = supabase
-      .channel('public:tournament_results')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_results'
-        },
-        () => {
-          fetchTournaments();
-        }
-      )
-      .subscribe();
+    const resultsChannel = createRealtimeChannel('tournament_results', () => {
+      console.log("Tournament results updated, refreshing data");
+      fetchTournaments();
+    });
     
     return () => {
       supabase.removeChannel(tournamentsChannel);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UserPlus, Trash2, Check } from "lucide-react";
 import AdminLayout from "@/components/AdminLayout";
@@ -7,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import RefreshButton from "@/components/RefreshButton";
 import { fetchData } from "@/utils/data-fetcher";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -34,6 +33,7 @@ const AdminUsers = () => {
         filters: { is_admin: true }
       });
       
+      console.log("Fetched admins:", data);
       setAdmins(data || []);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -50,22 +50,11 @@ const AdminUsers = () => {
   useEffect(() => {
     fetchAdmins();
     
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('public:users')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'users',
-          filter: 'is_admin=eq.true'
-        },
-        () => {
-          fetchAdmins();
-        }
-      )
-      .subscribe();
+    // Set up real-time subscription with improved error handling
+    const channel = createRealtimeChannel('users', () => {
+      console.log("Users table updated, refreshing admins list");
+      fetchAdmins();
+    });
     
     return () => {
       supabase.removeChannel(channel);

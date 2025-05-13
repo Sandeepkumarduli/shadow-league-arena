@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, PlusCircle } from "lucide-react";
@@ -6,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import RefreshButton from "@/components/RefreshButton";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import { fetchData } from "@/utils/data-fetcher";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TeamCard from "@/components/admin/TeamCard";
@@ -45,6 +44,8 @@ const AdminTeams = () => {
         columns: 'id, name, created_at, owner_id'
       });
       
+      console.log("Fetched teams:", data);
+      
       // Add some extra properties for UI
       const teamsWithMeta = await Promise.all(data.map(async (team) => {
         // Get team captain (owner)
@@ -61,14 +62,14 @@ const AdminTeams = () => {
           }
         }
         
-        // Count team members
+        // Count team members - fix type conversion issue
         const { data: membersData, error: membersError } = await supabase
           .from('team_members')
           .select('count', { count: 'exact' })
           .eq('team_id', team.id);
         
         const membersCount = !membersError && membersData && membersData[0]?.count !== undefined
-          ? membersData[0].count 
+          ? Number(membersData[0].count) 
           : 0;
         
         // Count tournaments participated
@@ -78,7 +79,7 @@ const AdminTeams = () => {
           .eq('team_id', team.id);
         
         const tournamentsCount = !tournamentsError && tournamentsData && tournamentsData[0]?.count !== undefined
-          ? tournamentsData[0].count
+          ? Number(tournamentsData[0].count)
           : 0;
         
         // Count wins (tournament results where position = 1)
@@ -89,7 +90,7 @@ const AdminTeams = () => {
           .eq('position', 1);
         
         const winsCount = !winsError && winsData && winsData[0]?.count !== undefined
-          ? winsData[0].count
+          ? Number(winsData[0].count)
           : 0;
         
         return {
@@ -101,7 +102,7 @@ const AdminTeams = () => {
           tournaments: tournamentsCount,
           wins: winsCount,
           active: true // Default active status
-        };
+        } as Team; // Explicitly cast to Team type
       }));
       
       setTeams(teamsWithMeta);
@@ -175,30 +176,18 @@ const AdminTeams = () => {
   useEffect(() => {
     fetchTeams();
     
-    // Setup real-time subscriptions
-    const teamChannel = supabase
-      .channel('public:teams')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'teams' },
-        () => {
-          fetchTeams();
-        }
-      )
-      .subscribe();
+    // Setup real-time subscriptions with improved error handling
+    const teamChannel = createRealtimeChannel('teams', () => {
+      console.log("Teams table updated, refreshing data");
+      fetchTeams();
+    });
       
-    const membersChannel = supabase
-      .channel('public:team_members')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'team_members' },
-        () => {
-          if (selectedTeam) {
-            fetchTeamMembers(selectedTeam);
-          }
-        }
-      )
-      .subscribe();
+    const membersChannel = createRealtimeChannel('team_members', () => {
+      console.log("Team members updated, refreshing data");
+      if (selectedTeam) {
+        fetchTeamMembers(selectedTeam);
+      }
+    });
     
     return () => {
       supabase.removeChannel(teamChannel);

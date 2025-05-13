@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -117,18 +116,22 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Auth redirect for the homepage
+// Fix: Modified HomeRedirect to only redirect when manually accessing / route
+// This prevents redirection to admin dashboard from other pages
 const HomeRedirect = () => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  const location = useLocation();
   
+  // Only redirect if the user is directly accessing the root path "/"
+  // This prevents unwanted redirections when users navigate back to homepage
   if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
   
-  if (isAuthenticated) {
-    if (isAdmin) {
-      return <Navigate to="/admin" replace />;
-    }
+  // Only redirect authenticated users if they're explicitly on the home page
+  if (isAuthenticated && location.pathname === "/") {
+    // Don't automatically redirect admins to admin dashboard
+    // Let them choose where to go from the homepage
     return <Navigate to="/dashboard" replace />;
   }
   
