@@ -175,8 +175,8 @@ export const deleteTournament = async (id: string, name: string): Promise<boolea
   }
 };
 
-// Subscribe to tournament changes
-export const subscribeTournamentsChanges = (
+// Subscribe to tournament changes - renamed from subscribeTournamentsChanges to match what's being imported
+export const subscribeTournamentChanges = (
   callback: (tournaments: Tournament[]) => void,
   filters?: { status?: string; game?: string }
 ) => {
@@ -200,6 +200,9 @@ export const subscribeTournamentsChanges = (
     supabase.removeChannel(channel);
   };
 };
+
+// Also export the original function name for backward compatibility
+export const subscribeTournamentsChanges = subscribeTournamentChanges;
 
 // Fetch completed tournaments
 export const fetchCompletedTournaments = async (): Promise<Tournament[]> => {

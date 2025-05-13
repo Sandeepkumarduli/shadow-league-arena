@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tournament } from "@/types/tournament";
 import { toast } from "@/hooks/use-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { subscribeTournamentChanges } from "@/services/tournamentService";
 
 export default function Tournaments() {
   const navigate = useNavigate();
@@ -19,57 +19,19 @@ export default function Tournaments() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        let query = supabase.from("tournaments").select("*");
-        
-        // Apply status filter if not "all"
-        if (statusFilter !== "all") {
-          query = query.eq("status", statusFilter);
-        }
-        
-        // Apply game filter if not "all"
-        if (gameFilter !== "all" && gameFilter !== "") {
-          query = query.eq("game", gameFilter);
-        }
-        
-        // Order by date
-        query = query.order("start_date", { ascending: true });
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        setTournaments(data || []);
-      } catch (error) {
-        console.error("Error fetching tournaments:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load tournaments. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
+    const unsubscribe = subscribeTournamentChanges(
+      (data) => {
+        setTournaments(data);
         setLoading(false);
+      },
+      {
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        game: gameFilter !== "all" && gameFilter !== "" ? gameFilter : undefined
       }
-    };
-
-    fetchTournaments();
+    );
     
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('public:tournaments')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournaments' },
-        () => {
-          console.log("Tournaments table updated, refreshing data");
-          fetchTournaments();
-        }
-      )
-      .subscribe();
-      
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [statusFilter, gameFilter]);
 
