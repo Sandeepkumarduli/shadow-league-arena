@@ -35,26 +35,26 @@ export async function fetchData<T = any>(
     // Create the base query string
     const queryString = join ? `${columns}, ${join}` : columns;
     
-    // Start with the base query - using type assertion to avoid recursive typing
-    let query = supabase.from(tableName).select(queryString);
+    // Start building the query with a type assertion to break the recursive typing
+    const query = supabase.from(tableName).select(queryString) as any;
     
-    // Apply filters directly
-    for (const [key, value] of Object.entries(filters)) {
+    // Apply filters without reassigning the query variable
+    Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        query = query.eq(key, value) as any; // Use type assertion to break type recursion
+        query.eq(key, value);
       }
-    }
+    });
 
-    // Apply ordering if specified
+    // Apply ordering if specified (without reassignment)
     if (orderBy) {
-      query = query.order(orderBy.column, {
+      query.order(orderBy.column, {
         ascending: orderBy.ascending !== false,
-      }) as any; // Use type assertion to break type recursion
+      });
     }
 
-    // Apply limit if specified
+    // Apply limit if specified (without reassignment)
     if (limit) {
-      query = query.limit(limit) as any; // Use type assertion to break type recursion
+      query.limit(limit);
     }
 
     // Execute query with appropriate method
@@ -102,25 +102,25 @@ export async function mutateData<T = any>(
     // Type-safe query creation based on action
     switch (action) {
       case "insert":
-        query = supabase.from(tableName).insert(data);
+        query = supabase.from(tableName).insert(data) as any;
         break;
       case "update":
-        query = supabase.from(tableName).update(data);
+        query = supabase.from(tableName).update(data) as any;
         break;
       case "delete":
-        query = supabase.from(tableName).delete();
+        query = supabase.from(tableName).delete() as any;
         break;
       default:
         throw new Error("Invalid action type");
     }
     
-    // Apply filters for update and delete
+    // Apply filters for update and delete without reassignment
     if (action !== "insert") {
-      for (const [key, value] of Object.entries(filters)) {
+      Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          query = query.eq(key, value) as any; // Use type assertion to break type recursion
+          query.eq(key, value);
         }
-      }
+      });
     }
     
     // Execute query
