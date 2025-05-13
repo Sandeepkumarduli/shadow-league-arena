@@ -1,9 +1,10 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Tables } from "@/integrations/supabase/types";
 
 // Define valid table names to avoid type errors
-type TableName = 'admin_requests' | 'users' | 'news' | 'notifications' | 
+export type TableName = 'admin_requests' | 'users' | 'news' | 'notifications' | 
   'team_members' | 'teams' | 'tournament_registrations' | 'tournaments' | 
   'tournament_results' | 'transactions' | 'wallets';
 
@@ -31,7 +32,10 @@ export async function fetchData<T = any>(
       join,
     } = options;
 
-    let query = supabase.from(tableName).select(join ? `${columns}, ${join}` : columns);
+    // Type safe way to build the query
+    let query = supabase
+      .from(tableName)
+      .select(join ? `${columns}, ${join}` : columns);
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -92,6 +96,7 @@ export async function mutateData<T = any>(
     
     let query;
     
+    // Type-safe query creation based on action
     switch (action) {
       case "insert":
         query = supabase.from(tableName).insert(data);
