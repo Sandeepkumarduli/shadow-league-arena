@@ -53,13 +53,13 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
       });
     }
     
-    // Combine user data with balance - manually construct User objects with correct typing
+    // Combine user data with balance using type assertion to avoid deep instantiation
     const result: User[] = [];
     
     if (users) {
-      for (const user of users) {
-        // Create a properly typed User object
-        const userWithBalance: User = {
+      users.forEach(user => {
+        // Explicitly construct a new User object with all required properties
+        const userWithBalance = {
           id: user.id,
           username: user.username,
           email: user.email,
@@ -67,11 +67,12 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
           created_at: user.created_at,
           updated_at: user.updated_at,
           is_admin: Boolean(user.is_admin),
-          bgmiid: user.bgmiid,
+          bgmiid: user.bgmiid || undefined,
           balance: balanceMap[user.id] || 0
-        };
+        } as User;
+        
         result.push(userWithBalance);
-      }
+      });
     }
     
     return result;
@@ -122,7 +123,8 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       
     if (walletError) {
       console.error('Error fetching user wallet:', walletError);
-      // Create a properly typed User object without balance data
+      
+      // Explicitly construct User object without balance data
       return {
         id: data.id,
         username: data.username,
@@ -131,12 +133,12 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
         created_at: data.created_at,
         updated_at: data.updated_at,
         is_admin: Boolean(data.is_admin),
-        bgmiid: data.bgmiid,
+        bgmiid: data.bgmiid || undefined,
         balance: 0
       };
     }
     
-    // Return a properly typed User object with all fields
+    // Explicitly construct User object with all data
     return {
       id: data.id,
       username: data.username,
@@ -145,7 +147,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_admin: Boolean(data.is_admin),
-      bgmiid: data.bgmiid,
+      bgmiid: data.bgmiid || undefined,
       balance: wallet?.balance || 0
     };
   } catch (error) {
