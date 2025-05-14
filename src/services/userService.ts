@@ -15,8 +15,15 @@ export interface User {
   balance: number;
 }
 
-// Type for update user params
-type UpdateUserParams = Partial<Omit<User, 'id' | 'created_at' | 'updated_at' | 'balance'>> & { id: string };
+// Simplified type for update user params
+export type UpdateUserParams = {
+  id: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  is_admin?: boolean;
+  bgmiid?: string;
+};
 
 // Fetch users with optional filters
 export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]> => {
@@ -53,13 +60,12 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
       });
     }
     
-    // Combine user data with balance using type assertion to avoid deep instantiation
+    // Manually construct User objects without complex type operations
     const result: User[] = [];
     
     if (users) {
       users.forEach(user => {
-        // Explicitly construct a new User object with all required properties
-        const userWithBalance = {
+        result.push({
           id: user.id,
           username: user.username,
           email: user.email,
@@ -69,9 +75,7 @@ export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]>
           is_admin: Boolean(user.is_admin),
           bgmiid: user.bgmiid || undefined,
           balance: balanceMap[user.id] || 0
-        } as User;
-        
-        result.push(userWithBalance);
+        });
       });
     }
     
@@ -124,7 +128,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
     if (walletError) {
       console.error('Error fetching user wallet:', walletError);
       
-      // Explicitly construct User object without balance data
+      // Manually construct User object without balance data
       return {
         id: data.id,
         username: data.username,
@@ -138,7 +142,7 @@ export const updateUser = async (id: string, userData: Partial<User>): Promise<U
       };
     }
     
-    // Explicitly construct User object with all data
+    // Manually construct User object with all data
     return {
       id: data.id,
       username: data.username,
