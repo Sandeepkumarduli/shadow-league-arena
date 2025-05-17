@@ -1,4 +1,3 @@
-
 import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -25,8 +24,18 @@ export type UpdateUserParams = {
   bgmiid?: string;
 };
 
+// Define a more specific type for filters
+export type UserFilters = {
+  id?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  is_admin?: boolean;
+  bgmiid?: string;
+};
+
 // Fetch users with optional filters
-export const fetchUsers = async (filters?: Record<string, any>): Promise<User[]> => {
+export const fetchUsers = async (filters?: UserFilters): Promise<User[]> => {
   try {
     // First get users
     let query = supabase.from('users').select('*');
