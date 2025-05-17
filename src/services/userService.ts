@@ -1,3 +1,4 @@
+
 import { supabase, createRealtimeChannel } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -116,7 +117,7 @@ export const subscribeUserChanges = (callback: (users: User[]) => void) => {
 };
 
 // Update user
-export const updateUser = async (id: string, userData: Partial<User>): Promise<User | null> => {
+export const updateUser = async (id: string, userData: UpdateUserParams): Promise<User | null> => {
   try {
     const { data, error } = await supabase
       .from('users')

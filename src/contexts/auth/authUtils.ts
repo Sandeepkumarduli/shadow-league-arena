@@ -137,6 +137,21 @@ export const signupUser = async (
   error?: Error;
 }> => {
   try {
+    // Check if email already exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error("Error checking for existing user:", checkError);
+    }
+    
+    if (existingUser) {
+      throw new Error("A user with this email already exists");
+    }
+    
     // Create new user with Supabase auth
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -159,33 +174,40 @@ export const signupUser = async (
       return { success: false };
     }
 
-    // Ensure user profile is created in the database
-    const { error: userError } = await supabase
-      .from('users')
-      .insert([{
-        id: data.user.id,
-        username,
-        email,
-        phone,
-        bgmiid,
-        is_admin: false
-      }]);
-
-    if (userError) {
-      console.error("Error creating user profile:", userError);
-    }
-
-    // Create wallet for the new user
-    const { error: walletError } = await supabase
-      .from('wallets')
-      .insert([{
-        user_id: data.user.id,
-        balance: 0
-      }]);
-
-    if (walletError) {
-      console.error("Error creating wallet:", walletError);
-    }
+    // Create user profile in the database with a small delay to ensure auth is complete
+    setTimeout(async () => {
+      try {
+        // Ensure user profile is created in the database
+        const { error: userError } = await supabase
+          .from('users')
+          .insert([{
+            id: data.user.id,
+            username,
+            email,
+            phone,
+            bgmiid,
+            is_admin: false
+          }]);
+    
+        if (userError) {
+          console.error("Error creating user profile:", userError);
+        }
+    
+        // Create wallet for the new user
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .insert([{
+            user_id: data.user.id,
+            balance: 0
+          }]);
+    
+        if (walletError) {
+          console.error("Error creating wallet:", walletError);
+        }
+      } catch (err) {
+        console.error("Error in delayed profile creation:", err);
+      }
+    }, 1000);
 
     toast({
       title: "Account Created",

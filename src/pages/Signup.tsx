@@ -12,6 +12,7 @@ export default function Signup() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [bgmiid, setBgmiId] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +23,7 @@ export default function Signup() {
     if (!username || !email || !password || !confirmPassword || !phone) {
       toast({
         title: "Missing fields",
-        description: "Please fill in all fields.",
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return;
@@ -40,11 +41,17 @@ export default function Signup() {
     setIsSubmitting(true);
     
     try {
-      await signup(email, password, username, phone);
-      navigate('/login');
-    } catch (error) {
-      // Error is already handled in the signup function
+      const success = await signup(email, password, username, phone, bgmiid);
+      if (success) {
+        navigate('/login');
+      }
+    } catch (error: any) {
       console.error("Signup error:", error);
+      toast({
+        title: "Signup Failed",
+        description: error.message || "There was an error creating your account. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -101,6 +108,20 @@ export default function Signup() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
+              disabled={isSubmitting}
+              className="bg-background border-gray-700 focus:border-primary"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white" htmlFor="bgmiid">
+              BGMI ID (Optional)
+            </label>
+            <Input
+              id="bgmiid"
+              placeholder="Your BGMI ID"
+              value={bgmiid}
+              onChange={(e) => setBgmiId(e.target.value)}
               disabled={isSubmitting}
               className="bg-background border-gray-700 focus:border-primary"
             />

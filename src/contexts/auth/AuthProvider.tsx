@@ -64,13 +64,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      return true;
     } catch (error: any) {
       toast({
         title: 'Login failed',
         description: error.message || 'Could not log in',
         variant: 'destructive',
       });
-      throw error;
+      return false;
     }
   };
 
@@ -103,31 +104,85 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signup = async (email: string, password: string, username: string, phone: string) => {
+  const signup = async (email: string, password: string, username: string, phone: string, bgmiid?: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      // Check if email already exists in users table
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Error checking for existing user:", checkError);
+      }
+      
+      if (existingUser) {
+        toast({
+          title: 'Sign up failed',
+          description: 'A user with this email already exists',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      // Proceed with signup
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username,
-            phone
+            phone,
+            bgmiid
           }
         }
       });
+      
       if (error) throw error;
+      
+      // Wait for auth to complete and create user profile and wallet
+      if (data.user) {
+        try {
+          // Create user record (handle this directly here rather than relying on triggers)
+          await supabase
+            .from('users')
+            .insert([{
+              id: data.user.id,
+              username,
+              email,
+              phone,
+              bgmiid,
+              is_admin: false
+            }]);
+            
+          // Create wallet for the user
+          await supabase
+            .from('wallets')
+            .insert([{
+              user_id: data.user.id,
+              balance: 0
+            }]);
+        } catch (err: any) {
+          console.error("Error creating user profile or wallet:", err);
+          // Don't throw, we've already created the auth user
+        }
+      }
       
       toast({
         title: "Sign up successful",
-        description: "Your account has been created.",
+        description: "Your account has been created. Please check your email to verify your account.",
       });
+      
+      return true;
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         title: 'Sign up failed',
         description: error.message || 'Could not create account',
         variant: 'destructive',
       });
-      throw error;
+      return false;
     }
   };
 
